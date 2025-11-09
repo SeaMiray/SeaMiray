@@ -1,4 +1,4 @@
-// script.js - V36 完全版（assets.json & portfolio.json対応、凝ったローディング、パソコン風ヘッダー、高解像度、強手振れ）
+// script.js - V43 修正版（モバイルブレークポイント1024px, ヘッダー高100px, モバイルFOV 65, モバイルlookAt(-2.5, 0, -0.5)）
 const CONFIG = {
   MODELS_PATH: './models/',
   USE_ABSOLUTE_PATH: false,
@@ -233,11 +233,21 @@ class PS2ParticleSystem {
 }
 
 class PS2Portfolio {
+  /**
+   * ★ [修正] constructor - モバイルブレークポイントを 1024px に変更
+   */
   constructor() {
     console.log('🚀 PS2Portfolio初期化開始');
     
     this.gameSceneInitialized = false;
-    this.sideNavWidth = 260;
+    
+    this.desktopNavWidth = 260; 
+    this.mobileHeaderHeight = 100; // CSS (100px) と一致させる
+    
+    // ★ [修正] ブレークポイントを 800 -> 1024 に変更
+    const isMobile = (window.innerWidth <= 1024);
+    this.sideNavWidth = isMobile ? 0 : this.desktopNavWidth; 
+    
     this.isLoadingComplete = false;
     this.isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
     this.isAnimating = false;
@@ -248,8 +258,8 @@ class PS2Portfolio {
     
     this.models = [];
     this.gamePackages = [];
-    this.assets = []; // assets.jsonデータ格納
-    this.portfolio = []; // portfolio.jsonデータ格納
+    this.assets = []; 
+    this.portfolio = []; 
     
     this.scene = null;
     this.camera = null;
@@ -258,7 +268,18 @@ class PS2Portfolio {
     this.composer = null;
     this.chromaticPass = null;
     
-    this.originalCameraPos = new THREE.Vector3(6, 2.5, 5);
+    // ★ デスクトップ用カメラ設定
+    this.desktopCameraPos = new THREE.Vector3(6, 2.5, 5);
+    this.desktopLookAt = new THREE.Vector3(-1.5, 0, -1);
+    
+    // ★ モバイル用カメラ設定
+    this.mobileCameraPos = new THREE.Vector3(6, 1.8, 5);
+    this.mobileLookAt = new THREE.Vector3(-2.5, 0, -0.5);
+    
+    // ★ 現在有効な設定を保持
+    this.activeCameraPos = isMobile ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
+    this.activeLookAt = isMobile ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
+    
     this.originalCameraRotation = new THREE.Euler();
     this.cameraShakeOffset = new THREE.Vector3();
     this.cameraNoise = new THREE.Vector3();
@@ -293,7 +314,6 @@ class PS2Portfolio {
       this.setupSectionTransition();
       this.setupSystemInfo();
       
-      // JSONデータの読み込みを追加
       await this.loadAllData();
       
       const initialActiveTab = document.querySelector('.nav-tab.active-tab');
@@ -305,7 +325,6 @@ class PS2Portfolio {
         }
       }
       
-      // 初期アクティブセクションの内容をレンダリング
       this.renderCurrentSection();
       
     } catch (error) {
@@ -314,14 +333,15 @@ class PS2Portfolio {
     }
   }
   
-  // すべてのJSONデータを読み込む
+  // ( ... loadAllData, loadAssets, loadPortfolio, renderCurrentSection, renderAssets, renderPortfolio ... )
+  // ( ... (変更なし) ... )
+  
   async loadAllData() {
     const stage = document.getElementById('loading-stage');
     const status = document.getElementById('loading-status');
     
     if (stage) stage.textContent = 'Loading data files...';
     
-    // 並行してJSONデータを読み込む
     const [assetsResult, portfolioResult] = await Promise.allSettled([
       this.loadAssets(),
       this.loadPortfolio()
@@ -343,13 +363,11 @@ class PS2Portfolio {
       this.portfolio = [];
     }
     
-    // リソースカウンターを更新（既存の3Dモデル読み込みに加えて）
     this.resourcesToLoad += 2; // 2つのJSONファイル
     this.resourceLoaded('assets.json');
     this.resourceLoaded('portfolio.json');
   }
   
-  // assets.jsonを読み込む
   async loadAssets() {
     try {
       const response = await fetch('./assets.json');
@@ -362,7 +380,6 @@ class PS2Portfolio {
     }
   }
   
-  // portfolio.jsonを読み込む
   async loadPortfolio() {
     try {
       const response = await fetch('./portfolio.json');
@@ -375,7 +392,6 @@ class PS2Portfolio {
     }
   }
   
-  // 現在アクティブなセクションをレンダリング
   renderCurrentSection() {
     const activeTab = document.querySelector('.nav-tab.active-tab');
     if (!activeTab) return;
@@ -388,20 +404,14 @@ class PS2Portfolio {
     }
   }
   
-  // アセットグリッドをレンダリング
   renderAssets() {
     const container = document.getElementById('asset-grid');
-    if (!container || container.children.length > 0) return; // 既にレンダリング済み
+    if (!container || container.children.length > 0) return; 
     
     console.log('🎨 アセットグリッドをレンダリング開始');
     
     if (this.assets.length === 0) {
-      container.innerHTML = `
-        <div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;">
-          <h3>データ読み込みエラー</h3>
-          <p>販売アセットのデータが見つかりません。</p>
-        </div>
-      `;
+      container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;"><h3>データ読み込みエラー</h3><p>販売アセットのデータが見つかりません。</p></div>`;
       return;
     }
     
@@ -427,13 +437,11 @@ class PS2Portfolio {
         </div>
       `;
       
-      // 画像読み込みエラーハンドリング
       const img = card.querySelector('img');
       img.addEventListener('error', () => {
         img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
       });
       
-      // ボタンクリックイベント
       const button = card.querySelector('.btn');
       button.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -450,20 +458,14 @@ class PS2Portfolio {
     console.log('✅ アセットグリッドレンダリング完了');
   }
   
-  // ポートフォリオグリッドをレンダリング
   renderPortfolio() {
     const container = document.getElementById('portfolio-grid');
-    if (!container || container.children.length > 0) return; // 既にレンダリング済み
+    if (!container || container.children.length > 0) return; 
     
     console.log('📝 ポートフォリオグリッドをレンダリング開始');
     
     if (this.portfolio.length === 0) {
-      container.innerHTML = `
-        <div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;">
-          <h3>データ読み込みエラー</h3>
-          <p>制作記録のデータが見つかりません。</p>
-        </div>
-      `;
+      container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;"><h3>データ読み込みエラー</h3><p>制作記録のデータが見つかりません。</p></div>`;
       return;
     }
     
@@ -473,7 +475,7 @@ class PS2Portfolio {
       card.innerHTML = `
         <div class="portfolio-image">
           <img src="${item.image}" alt="${item.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='">
-          <div class="portfolio-date ps2-text">${item.date}</div>
+          <div class.portfolio-date ps2-text">${item.date}</div>
         </div>
         <div class="portfolio-info">
           <div class="portfolio-header">
@@ -485,13 +487,11 @@ class PS2Portfolio {
         </div>
       `;
       
-      // 画像読み込みエラーハンドリング
       const img = card.querySelector('img');
       img.addEventListener('error', () => {
         img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
       });
       
-      // タグを生成
       const tagsContainer = card.querySelector(`#tags-${index}`);
       item.tags.forEach(tagText => {
         const tag = document.createElement('span');
@@ -505,9 +505,8 @@ class PS2Portfolio {
         tagsContainer.appendChild(tag);
       });
       
-      // カードクリックイベント
       card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('tag')) return; // タグクリック時は無効
+        if (e.target.classList.contains('tag')) return; 
         this.soundManager.playSelect();
         this.particleSystem.createBurst({ x: e.clientX, y: e.clientY }, 0xc5a880);
         this.showPortfolioDetail(item);
@@ -519,7 +518,6 @@ class PS2Portfolio {
     console.log('✅ ポートフォリオグリッドレンダリング完了');
   }
   
-  // ポートフォリオ詳細表示（ゲーム説明オーバーレイを流用）
   showPortfolioDetail(item) {
     const overlay = document.getElementById('game-desc-overlay');
     const title = document.getElementById('game-title');
@@ -579,7 +577,7 @@ class PS2Portfolio {
       url: this.getModelUrl(game.file)
     }));
     
-    this.resourcesToLoad = this.models.length + 3; // 3Dモデル + HDRI + Scene + Light
+    this.resourcesToLoad = this.models.length + 3; // 5(models) + 1(Scene) + 1(HDRI) + 1(Light)
     this.resourcesLoaded = 0;
     
     if (CONFIG.DEBUG_MODE) {
@@ -791,7 +789,6 @@ class PS2Portfolio {
   }
   
   showMemoryCardAccess(message) {
-    // メモリカードアクセス表示（簡易実装）
     const status = document.getElementById('loading-status');
     if (status && this.isLoadingComplete) {
       status.textContent = `Memory Card: ${message}`;
@@ -816,14 +813,21 @@ class PS2Portfolio {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.selectedObject) this.deselectGame();
       
-      if (e.key === 'ArrowLeft' && this.gamePackages.length > 0) {
-        this.currentKeyboardIndex = Math.max(0, this.currentKeyboardIndex - 1);
-        this.selectGameByIndex(this.currentKeyboardIndex);
-        this.showKeyboardPress('←');
-      } else if (e.key === 'ArrowRight' && this.gamePackages.length > 0) {
-        this.currentKeyboardIndex = Math.min(this.gamePackages.length - 1, this.currentKeyboardIndex + 1);
-        this.selectGameByIndex(this.currentKeyboardIndex);
-        this.showKeyboardPress('→');
+      if (!this.isAnimating && !this.selectedObject && this.gamePackages.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.currentKeyboardIndex = (this.currentKeyboardIndex - 1 + this.gamePackages.length) % this.gamePackages.length;
+          this.selectGameByIndex(this.currentKeyboardIndex, false); 
+          this.showKeyboardPress('←');
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          this.currentKeyboardIndex = (this.currentKeyboardIndex + 1) % this.gamePackages.length;
+          this.selectGameByIndex(this.currentKeyboardIndex, false); 
+          this.showKeyboardPress('→');
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            this.selectGameByIndex(this.currentKeyboardIndex, true); 
+        }
       }
     });
     
@@ -842,15 +846,35 @@ class PS2Portfolio {
     }
   }
   
-  selectGameByIndex(index) {
+  selectGameByIndex(index, doZoom) {
     const pkg = this.gamePackages[index];
-    if (pkg && !this.isAnimating) {
-      this.soundManager.playSelect();
-      if (this.selectedObject === pkg) {
-        this.deselectGame();
-      } else {
+    if (!pkg) return;
+    
+    this.soundManager.playClick();
+    
+    this.gamePackages.forEach(p => {
+        if (p !== pkg) {
+            gsap.to(p.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+            p.userData.hoverIntensity = 0;
+            p.traverse(node => {
+                if (node.isMesh && node.material.emissive) {
+                    gsap.to(node.material, { emissiveIntensity: 0.0, duration: 0.3 });
+                }
+            });
+        }
+    });
+    
+    gsap.to(pkg.scale, { x: 1.15, y: 1.15, z: 1.15, duration: 0.3 });
+    pkg.userData.hoverIntensity = 1;
+    pkg.traverse(node => {
+        if (node.isMesh && node.material.emissive) {
+            gsap.to(node.material, { emissiveIntensity: 0.3, duration: 0.3 });
+        }
+    });
+    this.hoveredObject = pkg;
+
+    if (doZoom) {
         this.selectGame(pkg);
-      }
     }
   }
   
@@ -999,11 +1023,14 @@ class PS2Portfolio {
         node.geometry = THREE.BufferGeometryUtils.mergeVertices(node.geometry);
         node.geometry.computeVertexNormals();
       } catch (e) {
-        console.warn('メッシュ最適化失敗:', e);
+        // console.warn('メッシュ最適化失敗:', e); // ログが多すぎるためコメントアウト
       }
     }
   }
   
+  /**
+   * ★ [修正] initGameScene - モバイル対応
+   */
   async initGameScene() {
     const container = document.getElementById('three-canvas-container');
     if (!container) {
@@ -1019,28 +1046,41 @@ class PS2Portfolio {
         powerPreference: 'high-performance',
         alpha: false
       });
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.PERFORMANCE.pixelRatio));
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.PERFORMANCE.pixelRatio)); 
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(this.renderer.domElement);
-      console.log('   ├ レンダラー初期化完了 (高解像度設定)');
+      console.log('   ├ レンダラー初期化完了');
       
       this.scene = new THREE.Scene();
       console.log('   ├ シーン作成完了');
       
+      // ★ [修正] モバイル対応
+      const isMobileView = (window.innerWidth <= 1024); // 800 -> 1024
+      this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
       const width = Math.max(1, window.innerWidth - this.sideNavWidth);
-      const height = Math.max(1, window.innerHeight);
-      this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-      this.camera.position.copy(this.originalCameraPos);
-      this.camera.lookAt(-1.5, 0, -1);
+      const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0)); // ★ トップヘッダーの高さを考慮
+      
+      // ★ [修正] モバイルでFOVを65に
+      const fov = isMobileView ? 65 : 50; 
+      
+      this.camera = new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000); 
+      
+      // ★ [修正] モバイル/デスクトップで lookAt ターゲットを動的に設定
+      this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
+      this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
+          
+      this.camera.position.copy(this.activeCameraPos); 
+      this.camera.lookAt(this.activeLookAt); 
+      
       this.originalCameraRotation.copy(this.camera.rotation);
       console.log('   ├ カメラ設定完了');
       
       this.initGLTFLoader();
       await this.loadHDRI();
       await this.loadScene();
-      await this.loadLights();
-      this.setupLighting();
+      await this.loadLights(); 
+      this.setupLighting(); 
       
       this.setupPostProcessing();
       console.log('   ├ ポストプロセス設定完了');
@@ -1087,7 +1127,7 @@ class PS2Portfolio {
     }
     
     if (CONFIG.POST_PROCESSING.fogEnabled) {
-      this.scene.fog = new THREE.Fog(0x222222, 5, 25);
+      this.scene.fog = new THREE.Fog(0x222222, 5, 25); 
       console.log('   └ 深度フォグ有効');
     }
     
@@ -1097,6 +1137,7 @@ class PS2Portfolio {
   }
   
   createChromaticAberrationPass() {
+    // (変更なし)
     const chromaticShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1126,6 +1167,7 @@ class PS2Portfolio {
   }
   
   createVignettePass() {
+    // (変更なし)
     const vignetteShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1157,6 +1199,7 @@ class PS2Portfolio {
   }
   
   createPS2NoisePass() {
+    // (変更なし)
     const ps2NoiseShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1206,6 +1249,11 @@ class PS2Portfolio {
     document.body.style.cursor = 'pointer';
     
     const tooltip = document.getElementById('package-tooltip');
+    if (!tooltip || this.isAnimating || this.selectedObject) {
+      tooltip?.classList.remove('visible');
+      return;
+    }
+    
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.gamePackages, true);
     
@@ -1608,7 +1656,7 @@ class PS2Portfolio {
     
     if (!this.isLoadingComplete) return;
     if (document.hidden) return;
-    
+
     this.frameCount++;
     if (this.frameCount % CONFIG.PERFORMANCE.frameSkip !== 0 && !this.selectedObject) {
       if (this.composer) {
@@ -1635,18 +1683,23 @@ class PS2Portfolio {
         this.updateHoverEffects();
     }
 
-    if (!this.selectedObject && CONFIG.AUTO_ROTATION.enabled) {
-        this.gamePackages.forEach((pkg, i) => {
-            pkg.rotation.y += 0.016 * CONFIG.AUTO_ROTATION.speed / 60;
-        });
-    }
-    
     this.gamePackages.forEach(pkg => {
-        pkg.lookAt(this.camera.position);
+        if (pkg === this.selectedObject) {
+            pkg.lookAt(this.camera.position);
+        } else {
+            pkg.lookAt(this.camera.position);
+            if (!this.isAnimating && !this.selectedObject && CONFIG.AUTO_ROTATION.enabled) {
+                pkg.rotation.y += 0.016 * CONFIG.AUTO_ROTATION.speed / 60;
+            }
+        }
     });
     
     this.updateCameraShake();
-    this.camera.position.copy(this.originalCameraPos).add(this.cameraShakeOffset);
+    this.camera.position.copy(this.activeCameraPos).add(this.cameraShakeOffset); 
+    
+    if (!this.selectedObject) {
+      this.camera.lookAt(this.activeLookAt); // ★ 動的なターゲットを使用
+    }
     
     if (this.ps2NoisePass) {
       this.ps2NoisePass.uniforms.time.value = currentTime * 0.001;
@@ -1708,13 +1761,27 @@ class PS2Portfolio {
     }
   }
   
+  /**
+   * ★ [修正] onWindowResize - モバイル対応
+   */
   onWindowResize() {
     if (!this.renderer || !this.camera) return;
     
+    // ★ [修正] モバイルヘッダーを考慮
+    const isMobileView = (window.innerWidth <= 1024); // 800 -> 1024
+    this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
     const width = Math.max(1, window.innerWidth - this.sideNavWidth);
-    const height = Math.max(1, window.innerHeight);
+    const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
+    
+    // ★ [修正] lookAt ターゲットとアクティブ位置を更新
+    this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
+    this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
     
     this.camera.aspect = width / height;
+    
+    // ★ [修正] FOVを更新
+    this.camera.fov = isMobileView ? 65 : 50; 
+    
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     

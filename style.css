@@ -649,6 +649,9 @@ button:focus-visible {
   margin-left: var(--nav-width);
   overflow-y: auto;
   overflow-x: hidden;
+  
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* セクションヘッダー */
@@ -738,6 +741,10 @@ button:focus-visible {
   flex-direction: column;
   padding: var(--nav-padding) 0;
   z-index: 100;
+  
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* システム情報バー */
@@ -753,6 +760,7 @@ button:focus-visible {
   font-size: 0.7rem;
   color: var(--text-color-dim);
   z-index: 10;
+  transition: all 0.3s ease;
 }
 
 .system-time {
@@ -789,6 +797,7 @@ button:focus-visible {
   display: flex;
   gap: 8px;
   z-index: 10;
+  transition: all 0.3s ease;
 }
 
 .window-btn {
@@ -826,6 +835,7 @@ button:focus-visible {
   right: 15px;
   font-family: var(--font-primary);
   font-size: 0.7rem;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .drive-label {
@@ -872,6 +882,21 @@ button:focus-visible {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+.nav-tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transition: left 0.5s ease;
+}
+
+.nav-tab:hover::before {
+  left: 100%;
 }
 
 .nav-tab:hover,
@@ -926,7 +951,7 @@ button:focus-visible {
 .nav-text-power {
   font-size: 1.2rem;
   letter-spacing: 1px;
-  transition: color 0.3s ease;
+  transition: color 0.3s ease, opacity 0.3s ease;
 }
 
 .nav-header .nav-tab:hover .power-button-simple {
@@ -944,10 +969,18 @@ button:focus-visible {
   animation: power-pulse 2s infinite;
 }
 
+/* ★ [修正] 発光アニメーションをPC用とモバイル用で分離 */
 @keyframes power-pulse {
   0%, 100% { box-shadow: 0 0 20px var(--accent-color), 0 0 8px var(--accent-color) inset; }
   50% { box-shadow: 0 0 30px var(--accent-color), 0 0 12px var(--accent-color) inset; }
 }
+
+/* ★ [新設] モバイル用の小さい発光アニメーション */
+@keyframes power-pulse-mobile {
+  0%, 100% { box-shadow: 0 0 10px var(--accent-color), 0 0 4px var(--accent-color) inset; }
+  50% { box-shadow: 0 0 15px var(--accent-color), 0 0 6px var(--accent-color) inset; }
+}
+
 
 .nav-header .nav-tab.active-tab .power-button-simple::before {
   background: var(--accent-color);
@@ -1072,6 +1105,14 @@ button:focus-visible {
   overflow: hidden;
 }
 
+/* ★ アセット/ポートフォリオ画像のレスポンシブ対応 */
+.asset-image-container img,
+.portfolio-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 画像がコンテナをはみ出さず、アスペクト比を維持して埋める */
+}
+
 .asset-badge {
   position: absolute;
   top: 15px;
@@ -1112,6 +1153,8 @@ button:focus-visible {
   margin-bottom: 20px;
   font-size: 0.85rem;
   color: var(--text-color-dim);
+  flex-wrap: wrap; /* モバイルで折り返す */
+  gap: 10px;
 }
 
 .asset-footer {
@@ -1185,6 +1228,8 @@ button:focus-visible {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap; /* モバイルで折り返す */
+  gap: 10px;
 }
 
 .portfolio-header h3 {
@@ -1228,17 +1273,94 @@ button:focus-visible {
 }
 
 /* ============================================================================
-   レスポンシブ対応
+   14. レスポンシブ対応 - モバイルフレンドリー修正
    ============================================================================ */
-@media (max-width: 768px) {
+/* ★ [修正] ブレークポイントを 800px -> 1024px に変更 */
+@media (max-width: 1024px) {
   :root {
-    --nav-width: 220px;
+    /* ★ ナビゲーションをトップヘッダーに変更 */
+    --nav-width: 0px; 
+    /* ★ [修正] ヘッダーの高さを 100px に変更 */
+    --header-height: 100px; 
+  }
+  
+  .side-nav {
+    /* ★ トップヘッダー化 */
+    width: 100%;
+    height: var(--header-height);
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-right: none;
+    border-bottom: 2px solid #000;
   }
   
   .main-content {
-    margin-left: var(--nav-width);
+    /* ★ margin-left を 0 に、padding-top をヘッダーの高さに */
+    margin-left: 0;
+    padding-top: var(--header-height); 
+  }
+
+  /* ★ [修正] モバイルで不要な要素のみ非表示 (テキストは表示) */
+  .system-info-bar,
+  .drive-info,
+  .window-controls,
+  .keyboard-indicator {
+    display: none;
   }
   
+  /* ★ [修正] テキストとアイコンが横並びになるよう調整 */
+  .nav-header {
+    width: auto;
+    padding: 0;
+  }
+  .nav-header .nav-tab {
+    padding: 10px;
+    flex-direction: row; /* ★ 横並び */
+    align-items: center; /* ★ 中央揃え */
+  }
+  .power-button-simple {
+    margin-bottom: 0;
+    width: 40px;
+    height: 40px;
+    margin-right: 15px; /* ★ [修正] テキストとのマージンを 10px -> 15px に */
+  }
+  .nav-text-power {
+    font-size: 1.0rem; /* ★ フォントサイズを調整 */
+  }
+  
+  .nav-list {
+    display: flex;
+    flex-direction: row;
+  }
+  .nav-item-folder .nav-tab {
+    padding: 10px 15px;
+    border: none;
+    flex-direction: row; /* ★ 横並び */
+    align-items: center; /* ★ 中央揃え */
+  }
+  .folder-icon {
+    margin-right: 8px;
+  }
+  .nav-text {
+      font-size: 1.0rem; /* ★ フォントサイズを調整 */
+  }
+
+  
+  /* ★ 3Dビューのヘルプテキストを小さく */
+  .scene-info {
+    bottom: 20px;
+    left: 10px;
+    transform: none;
+  }
+  .scene-help {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+  
+  /* ★ ポップアップウィンドウのレイアウト */
   .description-window {
     width: 95%;
     height: 90vh;
@@ -1246,32 +1368,50 @@ button:focus-visible {
   }
   
   .window-content {
-    flex-direction: column !important;
+    flex-direction: column !important; /* 強制的に上書き */
   }
   
   .info-panel {
     width: 100%;
-    height: 50%;
+    height: 50%; /* ★ 50% に変更 */
+    padding: 25px; 
+    overflow-y: auto;
   }
   
+  .info-panel h3 {
+    font-size: 1.5rem;
+  }
+  .description-body {
+    font-size: 0.9rem;
+  }
+  
+  .model-view-area {
+    width: 100%;
+    height: 50%; /* ★ 50% に変更 */
+    border-right: none;
+    border-bottom: 2px solid var(--nav-border);
+  }
+
+  /* ★ カードグリッドを1列に */
   .asset-grid-modern,
   .portfolio-grid {
     grid-template-columns: 1fr;
     gap: 30px;
-    padding: 0 30px 30px;
+    padding: 0 20px 30px;
   }
   
   .section-header {
-    padding: 30px 30px 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --nav-width: 180px;
-    --nav-padding: 15px;
+    padding: 30px 20px 15px;
   }
   
+  .section-header h2 {
+    font-size: 1.8rem;
+  }
+  .section-description {
+    font-size: 0.9rem;
+  }
+
+  /* ★ ローディング画面の調整 */
   .loading-text {
     font-size: 1.4rem;
   }
@@ -1280,18 +1420,22 @@ button:focus-visible {
     width: 220px;
   }
   
-  .keyboard-indicator {
-    gap: 5px;
-  }
-  
-  .indicator-item {
-    padding: 6px 10px;
-    font-size: 0.75rem;
-  }
-  
-  .system-info-bar {
-    flex-direction: column;
-    gap: 5px;
+  .loading-system-info {
     font-size: 0.6rem;
+  }
+  
+  .loading-ps2-logo {
+    font-size: 1.8rem;
+  }
+
+  /* ★ [バグ修正] モバイルヘッダー発光アニメーション */
+  .nav-header .nav-tab.active-tab .power-button-simple {
+    box-shadow: 0 0 15px var(--accent-color), 0 0 5px var(--accent-color) inset;
+    animation: power-pulse-mobile 2s infinite; /* ★ モバイル用アニメーションを指定 */
+  }
+
+  @keyframes power-pulse-mobile {
+    0%, 100% { box-shadow: 0 0 15px var(--accent-color), 0 0 5px var(--accent-color) inset; }
+    50% { box-shadow: 0 0 20px var(--accent-color), 0 0 8px var(--accent-color) inset; }
   }
 }
