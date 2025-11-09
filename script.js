@@ -1,12 +1,30 @@
-// script.js - V43 修正版（モバイルブレークポイント1024px, ヘッダー高100px, モバイルFOV 65, モバイルlookAt(-2.5, 0, -0.5)）
+// =============================================================================
+// PS2ポートフォリオサイト - 完全版 script.js
+// 修正版: SkinnedMesh警告対応 + cat.glbシェイプキー削除 + パッケージシェイプキー維持
+// =============================================================================
+
+// =============================================================================
+// 設定オブジェクト - ここを環境に合わせて編集してください
+// =============================================================================
 const CONFIG = {
+  // ★★★ ファイルパス設定（環境に合わせて変更）★★★
+  // 例1: cat.glbをmodelsフォルダ直下に配置した場合
+  CAT_PATH: './models/cat.glb',
+  
+  // 例2: cat.glbをmodels/animals/フォルダに配置した場合
+  // CAT_PATH: './models/animals/cat.glb',
+  
+  // その他のモデルパス
   MODELS_PATH: './models/',
+  SCENE_PATH: './models/Scene.glb',
+  LIGHT_PATH: './models/light.glb',
+  HDRI_PATH: './hdr.exr',
+  
+  // 機能設定
   USE_ABSOLUTE_PATH: false,
   DEBUG_MODE: true,
-  HDRI_PATH: './hdr.exr',
-  SCENE_PATH: './Scene.glb',
-  LIGHT_PATH: './light.glb',
   
+  // カメラシェイク設定
   CAMERA_SHAKE: {
     enabled: true,
     intensity: 0.08,
@@ -15,6 +33,7 @@ const CONFIG = {
     traumaDecay: 0.8
   },
   
+  // ポストプロセス設定
   POST_PROCESSING: {
     fogEnabled: true,
     vignetteEnabled: true,
@@ -23,11 +42,13 @@ const CONFIG = {
     chromaticAberration: true
   },
   
+  // 自動回転設定
   AUTO_ROTATION: {
     enabled: true,
     speed: 0.5
   },
   
+  // パフォーマンス設定
   PERFORMANCE: {
     frameSkip: 1,
     enableSound: false,
@@ -36,60 +57,9 @@ const CONFIG = {
   }
 };
 
-const DEFAULT_GAME_DATA = [
-  {
-    id: '準備中',
-    file: 'package_01.glb',
-    name: 'xxx',
-    description: 'xxx',
-    genre: 'xxx',
-    playtime: 'xxx',
-    devtime: 'xxx',
-    tools: 'Unreal Engine 5.7'
-  },
-  {
-    id: '準備中',
-    file: 'package_02.glb',
-    name: 'xxx',
-    description: 'xxx',
-    genre: 'xxx',
-    playtime: 'xxx',
-    devtime: 'xxx',
-    tools: 'Unreal Engine 5.7'
-  },
-  {
-    id: '準備中',
-    file: 'package_03.glb',
-    name: 'xxx',
-    description: '3xxx',
-    genre: 'xxx',
-    playtime: 'xxx',
-    devtime: 'xxx',
-    tools: 'Unreal Engine 5.7'
-  },
-  {
-    id: '準備中',
-    file: 'package_04.glb',
-    name: 'xxx',
-    description: 'xxx',
-    genre: 'xxx',
-    playtime: 'xxx',
-    devtime: 'xxx',
-    tools: 'Unreal Engine 5.7'
-  },
-  {
-    id: '制作中',
-    file: 'package_05.glb',
-    name: 'xxx',
-    description: 'xxx',
-    genre: 'ホラー',
-    playtime: '3-4時間',
-    devtime: '6ヶ月想定',
-    tools: 'Unreal Engine 5.7,Blender'
-  }
-];
-
-// PS2風サウンドマネージャー（変更なし）
+// =============================================================================
+// PS2風サウンドマネージャー
+// =============================================================================
 class PS2SoundManager {
   constructor() {
     this.enabled = CONFIG.PERFORMANCE.enableSound;
@@ -176,7 +146,9 @@ class PS2SoundManager {
   }
 }
 
-// PS2風パーティクルシステム（変更なし）
+// =============================================================================
+// PS2風パーティクルシステム
+// =============================================================================
 class PS2ParticleSystem {
   constructor(container) {
     this.container = container;
@@ -232,19 +204,17 @@ class PS2ParticleSystem {
   }
 }
 
+// =============================================================================
+// メインポートフォリオクラス
+// =============================================================================
 class PS2Portfolio {
-  /**
-   * ★ [修正] constructor - モバイルブレークポイントを 1024px に変更
-   */
   constructor() {
     console.log('🚀 PS2Portfolio初期化開始');
     
     this.gameSceneInitialized = false;
-    
     this.desktopNavWidth = 260; 
-    this.mobileHeaderHeight = 100; // CSS (100px) と一致させる
+    this.mobileHeaderHeight = 100;
     
-    // ★ [修正] ブレークポイントを 800 -> 1024 に変更
     const isMobile = (window.innerWidth <= 1024);
     this.sideNavWidth = isMobile ? 0 : this.desktopNavWidth; 
     
@@ -261,6 +231,12 @@ class PS2Portfolio {
     this.assets = []; 
     this.portfolio = []; 
     
+    // ★★★ cat.glb関連のプロパティ（シェイプキー関連は削除）★★★
+    this.catMixer = null;
+    this.catModel = null;
+    // this.catCylinderMesh = null; // 削除
+    // this.catwalkShapeKeyIndex = -1; // 削除
+    
     this.scene = null;
     this.camera = null;
     this.renderer = null;
@@ -268,15 +244,12 @@ class PS2Portfolio {
     this.composer = null;
     this.chromaticPass = null;
     
-    // ★ デスクトップ用カメラ設定
     this.desktopCameraPos = new THREE.Vector3(6, 2.5, 5);
     this.desktopLookAt = new THREE.Vector3(-1.5, 0, -1);
     
-    // ★ モバイル用カメラ設定
     this.mobileCameraPos = new THREE.Vector3(6, 1.8, 5);
     this.mobileLookAt = new THREE.Vector3(-2.5, 0, -0.5);
     
-    // ★ 現在有効な設定を保持
     this.activeCameraPos = isMobile ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobile ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
     
@@ -293,6 +266,9 @@ class PS2Portfolio {
     
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+    
+    this.clock = new THREE.Clock();
+    this.mixers = [];
     
     this.soundManager = new PS2SoundManager();
     this.particleSystem = new PS2ParticleSystem(
@@ -333,9 +309,6 @@ class PS2Portfolio {
     }
   }
   
-  // ( ... loadAllData, loadAssets, loadPortfolio, renderCurrentSection, renderAssets, renderPortfolio ... )
-  // ( ... (変更なし) ... )
-  
   async loadAllData() {
     const stage = document.getElementById('loading-stage');
     const status = document.getElementById('loading-status');
@@ -363,7 +336,7 @@ class PS2Portfolio {
       this.portfolio = [];
     }
     
-    this.resourcesToLoad += 2; // 2つのJSONファイル
+    this.resourcesToLoad += 2;
     this.resourceLoaded('assets.json');
     this.resourceLoaded('portfolio.json');
   }
@@ -474,8 +447,8 @@ class PS2Portfolio {
       card.className = 'portfolio-card';
       card.innerHTML = `
         <div class="portfolio-image">
-          <img src="${item.image}" alt="${item.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='">
-          <div class.portfolio-date ps2-text">${item.date}</div>
+          <img src="${item.image}" alt="${item.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=;>
+          <div class="portfolio-date ps2-text">${item.date}</div>
         </div>
         <div class="portfolio-info">
           <div class="portfolio-header">
@@ -572,12 +545,65 @@ class PS2Portfolio {
     if (stage) stage.textContent = 'Checking system...';
     if (status) status.textContent = 'Preparing game data...';
     
+    const DEFAULT_GAME_DATA = [
+      {
+        id: '準備中',
+        file: 'package_01.glb',
+        name: 'xxx',
+        description: 'xxx',
+        genre: 'xxx',
+        playtime: 'xxx',
+        devtime: 'xxx',
+        tools: 'Unreal Engine 5.7'
+      },
+      {
+        id: '準備中',
+        file: 'package_02.glb',
+        name: 'xxx',
+        description: 'xxx',
+        genre: 'xxx',
+        playtime: 'xxx',
+        devtime: 'xxx',
+        tools: 'Unreal Engine 5.7'
+      },
+      {
+        id: '準備中',
+        file: 'package_03.glb',
+        name: 'xxx',
+        description: '3xxx',
+        genre: 'xxx',
+        playtime: 'xxx',
+        devtime: 'xxx',
+        tools: 'Unreal Engine 5.7'
+      },
+      {
+        id: '準備中',
+        file: 'package_04.glb',
+        name: 'xxx',
+        description: 'xxx',
+        genre: 'xxx',
+        playtime: 'xxx',
+        devtime: 'xxx',
+        tools: 'Unreal Engine 5.7'
+      },
+      {
+        id: '制作中',
+        file: 'package_05.glb',
+        name: 'xxx',
+        description: 'xxx',
+        genre: 'ホラー',
+        playtime: '3-4時間',
+        devtime: '6ヶ月想定',
+        tools: 'Unreal Engine 5.7,Blender'
+      }
+    ];
+    
     this.models = DEFAULT_GAME_DATA.map(game => ({
       ...game,
       url: this.getModelUrl(game.file)
     }));
     
-    this.resourcesToLoad = this.models.length + 3; // 5(models) + 1(Scene) + 1(HDRI) + 1(Light)
+    this.resourcesToLoad = this.models.length + 4;
     this.resourcesLoaded = 0;
     
     if (CONFIG.DEBUG_MODE) {
@@ -632,6 +658,7 @@ class PS2Portfolio {
         'Configuring graphics...',
         'Loading game packages...',
         'Loading data files...',
+        'Loading cat model...',
         'Finalizing setup...'
       ];
       const stageIndex = Math.floor((this.resourcesLoaded / this.resourcesToLoad) * (stages.length - 1));
@@ -670,7 +697,7 @@ class PS2Portfolio {
           setTimeout(() => {
             targetSection.classList.add('active');
             this.hideSectionTransition();
-            this.renderCurrentSection(); // セクション切替時にレンダリング
+            this.renderCurrentSection();
           }, 300);
         }
         
@@ -810,6 +837,7 @@ class PS2Portfolio {
     
     const closeOverlay = () => this.deselectGame();
     closeButton?.addEventListener('click', closeOverlay);
+    
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.selectedObject) this.deselectGame();
       
@@ -897,6 +925,8 @@ class PS2Portfolio {
         console.log('📷 カメラ:', this.camera);
         console.log('📦 アセット:', this.assets);
         console.log('📝 ポートフォリオ:', this.portfolio);
+        console.log('🐱 catMixer:', this.catMixer);
+        console.log('🐱 catModel:', this.catModel);
       }
     });
   }
@@ -951,6 +981,7 @@ class PS2Portfolio {
           gltf.scene.traverse(node => {
             this.setupPS2Material(node);
             
+            // ★★★ パッケージモデル用: "Open"シェイプキーを検出 ★★★
             if (node.isMesh && node.morphTargetDictionary && node.morphTargetDictionary['Open'] !== undefined) {
                 console.log(`   └ 🔑 シェイプキー "Open" を発見: ${name}`);
                 animShapeKeyIndex = node.morphTargetDictionary['Open'];
@@ -1004,6 +1035,9 @@ class PS2Portfolio {
     return pkg;
   }
   
+  // =============================================================================
+  // ★★★ 修正1: SkinnedMesh対応のマテリアルセットアップ ★★★
+  // =============================================================================
   setupPS2Material(node) {
     if (!node.isMesh || !node.material) return;
     const originalMat = node.material;
@@ -1012,7 +1046,9 @@ class PS2Portfolio {
       color: originalMat.color || 0xffffff,
       transparent: originalMat.transparent || false,
       opacity: originalMat.opacity || 1.0,
-      side: originalMat.side || THREE.FrontSide
+      side: originalMat.side || THREE.FrontSide,
+      // ★★★ 重要: SkinnedMeshの場合はskinningを有効化 ★★★
+      skinning: node.isSkinnedMesh === true
     });
     node.material = ps2Mat;
     node.castShadow = true;
@@ -1023,14 +1059,11 @@ class PS2Portfolio {
         node.geometry = THREE.BufferGeometryUtils.mergeVertices(node.geometry);
         node.geometry.computeVertexNormals();
       } catch (e) {
-        // console.warn('メッシュ最適化失敗:', e); // ログが多すぎるためコメントアウト
+        // console.warn('メッシュ最適化失敗:', e);
       }
     }
   }
   
-  /**
-   * ★ [修正] initGameScene - モバイル対応
-   */
   async initGameScene() {
     const container = document.getElementById('three-canvas-container');
     if (!container) {
@@ -1055,18 +1088,15 @@ class PS2Portfolio {
       this.scene = new THREE.Scene();
       console.log('   ├ シーン作成完了');
       
-      // ★ [修正] モバイル対応
-      const isMobileView = (window.innerWidth <= 1024); // 800 -> 1024
+      const isMobileView = (window.innerWidth <= 1024);
       this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
       const width = Math.max(1, window.innerWidth - this.sideNavWidth);
-      const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0)); // ★ トップヘッダーの高さを考慮
+      const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
       
-      // ★ [修正] モバイルでFOVを65に
       const fov = isMobileView ? 65 : 50; 
       
       this.camera = new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000); 
       
-      // ★ [修正] モバイル/デスクトップで lookAt ターゲットを動的に設定
       this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
       this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
           
@@ -1074,6 +1104,8 @@ class PS2Portfolio {
       this.camera.lookAt(this.activeLookAt); 
       
       this.originalCameraRotation.copy(this.camera.rotation);
+      this.cameraShakeOffset = new THREE.Vector3();
+      
       console.log('   ├ カメラ設定完了');
       
       this.initGLTFLoader();
@@ -1081,7 +1113,6 @@ class PS2Portfolio {
       await this.loadScene();
       await this.loadLights(); 
       this.setupLighting(); 
-      
       this.setupPostProcessing();
       console.log('   ├ ポストプロセス設定完了');
       
@@ -1137,7 +1168,6 @@ class PS2Portfolio {
   }
   
   createChromaticAberrationPass() {
-    // (変更なし)
     const chromaticShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1167,7 +1197,6 @@ class PS2Portfolio {
   }
   
   createVignettePass() {
-    // (変更なし)
     const vignetteShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1199,7 +1228,6 @@ class PS2Portfolio {
   }
   
   createPS2NoisePass() {
-    // (変更なし)
     const ps2NoiseShader = {
       uniforms: {
         tDiffuse: { value: null },
@@ -1331,6 +1359,7 @@ class PS2Portfolio {
       CONFIG.CAMERA_SHAKE.trauma = 0.8;
     }
     
+    // ★★★ パッケージモデル用: "Open"シェイプキー再生 ★★★
     const shapeKeyIndex = gameObject.userData.animShapeKeyIndex;
     if (shapeKeyIndex !== -1) {
         console.log(`   └ 🔑 シェイプキー "Open" (Index: ${shapeKeyIndex}) を再生`);
@@ -1395,6 +1424,7 @@ class PS2Portfolio {
     
     const gameObject = this.selectedObject;
     
+    // ★★★ パッケージモデル用: "Open"シェイプキー解除 ★★★
     const shapeKeyIndex = gameObject.userData.animShapeKeyIndex;
     if (shapeKeyIndex !== -1) {
         console.log(`   └ 🔑 シェイプキー "Open" (Index: ${shapeKeyIndex}) をリセット`);
@@ -1517,7 +1547,7 @@ class PS2Portfolio {
   
   async loadScene() {
     try {
-      console.log('   ├ Scene.glb読み込み開始');
+      console.log('   ├ Scene.glb 読み込み開始');
       if (!this.gltfLoader) this.initGLTFLoader();
       
       const gltf = await this.gltfLoader.loadAsync(CONFIG.SCENE_PATH);
@@ -1525,10 +1555,10 @@ class PS2Portfolio {
       this.scene.add(this.sceneModel);
       this.sceneModel.traverse(node => this.setupPS2Material(node));
       
-      this.resourceLoaded('Scene.glb(机)');
-      console.log('   └ Scene.glb読み込み成功');
+      this.resourceLoaded('Scene.glb (机)');
+      console.log('   └ Scene.glb 読み込み成功');
     } catch (error) {
-      console.warn('   └ Scene.glb読み込み失敗:', error);
+      console.warn('   └ Scene.glb 読み込み失敗:', error);
       this.createFallbackScene();
       this.resourceLoaded('Scene(フォールバック)');
     }
@@ -1578,8 +1608,78 @@ class PS2Portfolio {
     console.log('   └ 補助ライト(Ambient)設定完了');
   }
   
+  // =============================================================================
+  // ★★★ 修正2: cat.glbロード（シェイプキー関連コード削除）★★★
+  // =============================================================================
+  async loadCatModel() {
+    console.log('🐱 cat.glb 読み込み開始');
+    console.log(`   └ パス: ${CONFIG.CAT_PATH}`);
+    
+    this.catMixer = null;
+    this.catModel = null;
+    
+    try {
+      if (!this.gltfLoader) {
+        console.log('   └ GLTFLoader初期化が必要');
+        this.initGLTFLoader();
+      }
+      
+      console.log('   └ GLTFLoaderで読み込み開始...');
+      const gltf = await this.gltfLoader.loadAsync(CONFIG.CAT_PATH);
+      console.log('   └ ✅ GLTFデータ読み込み成功');
+      
+      const catModel = gltf.scene;
+      this.catModel = catModel;
+      
+      catModel.traverse(node => this.setupPS2Material(node));
+      console.log(`   └ ✅ マテリアルセットアップ完了`);
+      
+      // ★★★ シェイプキー関連コードを完全削除 ★★★
+      
+      // ★★★ ボーンアニメーションのみ維持 ★★★
+      if (gltf.animations && gltf.animations.length > 0) {
+        console.log(`   └ 🎬 検出されたGLTFアニメーション一覧: ${gltf.animations.map(a => `'${a.name}'`).join(', ')}`);
+        
+        const catwalkAnimation = gltf.animations.find(clip => clip.name === 'CATWALK');
+        if (catwalkAnimation) {
+          this.catMixer = new THREE.AnimationMixer(catModel);
+          const action = this.catMixer.clipAction(catwalkAnimation);
+          action.setLoop(THREE.LoopRepeat);
+          action.play();
+          console.log(`   └ ▶️ GLTFアニメーション 'CATWALK' を再生開始`);
+        }
+      }
+      
+      catModel.position.set(3.5, 0.5, 0);
+      catModel.scale.set(1.0, 1.0, 1.0);
+      
+      this.scene.add(catModel);
+      this.resourceLoaded('cat.glb (アニメーション)');
+      console.log('   └ ✅ cat.glb シーン追加完了');
+      
+      return catModel;
+      
+    } catch (error) {
+      console.error(`   └ ❌ cat.glb 読み込みで例外発生:`, error);
+      console.error(`   └ エラースタック:`, error.stack);
+      this.resourceLoaded('cat.glb (エラー)');
+      
+      const fallbackGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const fallbackMat = new THREE.MeshLambertMaterial({ 
+        color: 0xFF00FF,
+        emissive: 0x660066
+      });
+      const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
+      fallbackMesh.position.set(3.5, 0.5, 0);
+      fallbackMesh.name = 'cat_fallback';
+      this.scene.add(fallbackMesh);
+      
+      return null;
+    }
+  }
+  
   async loadAndArrangePackages() {
-    console.log('%c📦 パッケージ読み込み開始', 'color: #00AAFF; font-size: 14px; font-weight: bold;');
+    console.log('%c📦 パッケージ＆cat.glb読み込み開始', 'color: #00AAFF; font-size: 14px; font-weight: bold;');
     
     const spacing = 1.2;
     const totalModels = this.models.length;
@@ -1623,6 +1723,15 @@ class PS2Portfolio {
     });
     
     await Promise.all(loadPromises);
+    
+    console.log('🐱 cat.glb ロードを開始します...');
+    try {
+      await this.loadCatModel();
+      console.log('✅ cat.glb ロード成功');
+    } catch (catError) {
+      console.error('❌ cat.glb ロード失敗:', catError);
+    }
+    
     console.log('%c✅ 全パッケージ配置完了', 'color: #00FF00; font-size: 14px; font-weight: bold;');
   }
   
@@ -1650,65 +1759,105 @@ class PS2Portfolio {
     }
   }
   
+  // =============================================================================
+  // ★★★ 修正3: メインアニメーションループ（catシェイプキー削除）★★★
+  // =============================================================================
   animate() {
     requestAnimationFrame(() => this.animate());
-    const currentTime = performance.now();
     
-    if (!this.isLoadingComplete) return;
-    if (document.hidden) return;
-
-    this.frameCount++;
-    if (this.frameCount % CONFIG.PERFORMANCE.frameSkip !== 0 && !this.selectedObject) {
-      if (this.composer) {
-        this.composer.render();
-      } else if (this.renderer && this.scene && this.camera) {
+    if (!this.isLoadingComplete) {
+      if (this.renderer?.domElement) {
         this.renderer.render(this.scene, this.camera);
       }
       return;
     }
-    
-    const deltaTime = currentTime - this.lastTime;
-    if (deltaTime >= 1000) {
-      this.fps = Math.floor(this.frameCount / (deltaTime / 1000));
-      this.frameCount = 0;
-      this.lastTime = currentTime;
-      
-      const fpsCounter = document.getElementById('fps-counter');
-      if (fpsCounter?.classList.contains('visible')) {
-        fpsCounter.textContent = `FPS: ${this.fps}`;
-      }
-    }
-    
-    if (!this.isAnimating) {
-        this.updateHoverEffects();
-    }
 
-    this.gamePackages.forEach(pkg => {
-        if (pkg === this.selectedObject) {
-            pkg.lookAt(this.camera.position);
-        } else {
-            pkg.lookAt(this.camera.position);
-            if (!this.isAnimating && !this.selectedObject && CONFIG.AUTO_ROTATION.enabled) {
-                pkg.rotation.y += 0.016 * CONFIG.AUTO_ROTATION.speed / 60;
-            }
+    if (document.hidden) return;
+
+    try {
+      this.frameCount++;
+      const currentTime = performance.now();
+      const deltaTime = currentTime - this.lastTime;
+      
+      if (deltaTime >= 1000) {
+        this.fps = Math.floor(this.frameCount / (deltaTime / 1000));
+        this.frameCount = 0;
+        this.lastTime = currentTime;
+        
+        const fpsCounter = document.getElementById('fps-counter');
+        if (fpsCounter?.classList.contains('visible')) {
+          fpsCounter.textContent = `FPS: ${this.fps}`;
         }
-    });
-    
-    this.updateCameraShake();
-    this.camera.position.copy(this.activeCameraPos).add(this.cameraShakeOffset); 
-    
-    if (!this.selectedObject) {
-      this.camera.lookAt(this.activeLookAt); // ★ 動的なターゲットを使用
-    }
-    
-    if (this.ps2NoisePass) {
-      this.ps2NoisePass.uniforms.time.value = currentTime * 0.001;
-    }
-    
-    if (this.composer) {
-      this.composer.render();
-    } else if (this.renderer && this.scene && this.camera) {
-      this.renderer.render(this.scene, this.camera);
+      }
+
+      if (this.frameCount % CONFIG.PERFORMANCE.frameSkip !== 0 && !this.selectedObject) {
+        if (this.composer) {
+          this.composer.render();
+        } else if (this.renderer) {
+          this.renderer.render(this.scene, this.camera);
+        }
+        return;
+      }
+
+      if (!this.isAnimating && !this.selectedObject) {
+        this.updateHoverEffects();
+      }
+
+      this.gamePackages.forEach(pkg => {
+        if (pkg?.lookAt) {
+          pkg.lookAt(this.camera.position);
+          if (!this.isAnimating && !this.selectedObject && CONFIG.AUTO_ROTATION.enabled) {
+            pkg.rotation.y += 0.016 * CONFIG.AUTO_ROTATION.speed / 60;
+          }
+        }
+      });
+
+      const rawDelta = this.clock.getDelta();
+      const safeDelta = (typeof rawDelta === 'number' && isFinite(rawDelta) && rawDelta >= 0) 
+        ? Math.min(rawDelta, 0.1) 
+        : 0.016;
+
+      // ★★★ cat用シェイプキーアニメーションコードを完全削除 ★★★
+
+      // ★★★ catMixerの更新は維持 ★★★
+      if (this.catMixer && this.catModel && typeof this.catMixer.update === 'function') {
+        try {
+          this.catMixer.update(safeDelta);
+        } catch (mixerError) {
+          console.error('💥 catMixer.update() エラー:', mixerError);
+          this.catMixer = null;
+        }
+      } else if (this.frameCount % 300 === 0) {
+        console.warn(`⚠️ catMixer非アクティブ: mixer=${typeof this.catMixer}, model=${typeof this.catModel}`);
+      }
+
+      this.mixers.forEach(mixer => {
+        if (mixer?.update) mixer.update(safeDelta);
+      });
+
+      this.updateCameraShake();
+      if (this.camera) {
+        this.camera.position.copy(this.activeCameraPos).add(this.cameraShakeOffset);
+        if (!this.selectedObject) {
+          this.camera.lookAt(this.activeLookAt);
+        }
+      }
+
+      if (this.ps2NoisePass?.uniforms?.time) {
+        this.ps2NoisePass.uniforms.time.value = currentTime * 0.001;
+      }
+
+      if (this.composer) {
+        this.composer.render();
+      } else if (this.renderer) {
+        this.renderer.render(this.scene, this.camera);
+      }
+
+    } catch (mainError) {
+      console.error('🚨 animate() 未捕捉例外:', mainError);
+      if (this.frameCount % 300 === 0) {
+        console.warn('🔄 アニメーションループが安定しない状態が続いています');
+      }
     }
   }
   
@@ -1761,27 +1910,19 @@ class PS2Portfolio {
     }
   }
   
-  /**
-   * ★ [修正] onWindowResize - モバイル対応
-   */
   onWindowResize() {
     if (!this.renderer || !this.camera) return;
     
-    // ★ [修正] モバイルヘッダーを考慮
-    const isMobileView = (window.innerWidth <= 1024); // 800 -> 1024
+    const isMobileView = (window.innerWidth <= 1024);
     this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
     const width = Math.max(1, window.innerWidth - this.sideNavWidth);
     const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
     
-    // ★ [修正] lookAt ターゲットとアクティブ位置を更新
     this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
     
     this.camera.aspect = width / height;
-    
-    // ★ [修正] FOVを更新
     this.camera.fov = isMobileView ? 65 : 50; 
-    
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     
@@ -1791,6 +1932,9 @@ class PS2Portfolio {
   }
 }
 
+// =============================================================================
+// DOM読み込み完了後の初期化
+// =============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('📄 DOM読み込み完了');
   
@@ -1799,7 +1943,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
   if (window.location.protocol === 'file:') {
-    console.error('❌ ファイルプロトコル(file://)では動作しません！');
+    console.error('❌ ファイルプロトコル(file://)では動作しません！HTTPサーバーが必要です。');
+    alert('⚠️ ローカルファイル(file://)では動作しません。\n\nHTTPサーバーを起動してください:\n\n1. ターミナルでプロジェクトルートに移動\n2. コマンド実行: npx serve . -p 3000\n3. ブラウザで http://localhost:3000 にアクセス');
     return;
   }
   
