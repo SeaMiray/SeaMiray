@@ -1,0 +1,18 @@
+[
+  {
+    "date": "2025.10",
+    "title": "自販機モデリング検証",
+    "description": "Blenderでリアルタイム照明を最適化した自販機モデルの制作プロセス。PBRテクスチャの適用と最適化を重点的に検証。",
+    "image": "images/portfolio/vending_process.jpg",
+    "blenderVersion": "Blender 4.2.1",
+    "tags": ["Blender", "PBR", "最適化"]
+  },
+  {
+    "date": "2025.10",
+    "title": "コインパーキング環境構築",
+    "description": "Unreal Engineでコインパーキングの環境ライトを構築。影のリアルさを追求したテストレンダリング。",
+    "image": "images/portfolio/parking_env.jpg",
+    "blenderVersion": "Blender 4.1.0",
+    "tags": ["UE5", "Lighting", "Environment"]
+  }
+]
