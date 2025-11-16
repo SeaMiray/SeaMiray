@@ -8,11 +8,11 @@
     "tags": ["Blender", "PBR", "最適化"]
   },
   {
-    "date": "2025.10",
-    "title": "コインパーキング環境構築",
-    "description": "Unreal Engineでコインパーキングの環境ライトを構築。影のリアルさを追求したテストレンダリング。",
-    "image": "images/portfolio/parking_env.jpg",
-    "blenderVersion": "Blender 4.1.0",
-    "tags": ["UE5", "Lighting", "Environment"]
+    "date": "",
+    "title": "【3Dアセット作成】コインパーキング 11月17日",
+    "description": "Blenderでモデリングとテクスチャリングを行いました。以前はテクスチャ制作にはSubstancePainterを使用していましたが、Blenderとのデータのやり取りが面倒なため今回はBlenderのみを使用して制作を行いました。初めての試みでしたが、この仕上がりならこれからはBlenderのみでも十分な感じです。",
+    "image": "images/assets/Carparking.webp",
+    "blenderVersion": "Blender 4.5.3",
+    "tags": ["3DModels", "Props", "Environment"]
   }
 ]

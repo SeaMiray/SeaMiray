@@ -1,4 +1,5 @@
 [
+  
   {
     "title": "自販機3Dアセット(６種類)",
     "description": "リアルな日本の街をデザインするための、自販機、証明写真機も含んだ3Dモデルアセットです。",
@@ -12,12 +13,12 @@
   {
     "title": "コインパーキング3Dアセット(７種類)",
     "description": "ロック版、車止めプロック、精算機など計七種のフォトリアルなモデルアセットです。",
-    "image": "images/assets/parking.jpg",
-    "polycount": "8,200 Polys",
-    "software": "Blender, UE, Unity",
-    "price": "¥4,000",
-    "badge": "準備中",
-    "link": "https://example.com/sale2"
+    "image": "images/assets/Carparking.webp",
+    "polycount": "12,647 Polys",
+    "software": "Blender",
+    "price": "¥7,000",
+    "badge": "発売中",
+    "link": "https://www.cgtrader.com/3d-models/exterior/street-exterior/japan-parking-lot-asset-pack"
   }
 
 ]
