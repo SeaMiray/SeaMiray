@@ -1,18 +1,13 @@
 [
   {
-    "date": "2025.10",
-    "title": "自販機モデリング検証",
-    "description": "Blenderでリアルタイム照明を最適化した自販機モデルの制作プロセス。PBRテクスチャの適用と最適化を重点的に検証。",
-    "image": "images/portfolio/vending_process.jpg",
-    "blenderVersion": "Blender 4.2.1",
-    "tags": ["Blender", "PBR", "最適化"]
-  },
-  {
     "date": "",
-    "title": "【3Dアセット作成】コインパーキング 11月17日",
+    "title": "【3Dアセット作成】コインパーキング",
     "description": "Blenderでモデリングとテクスチャリングを行いました。以前はテクスチャ制作にはSubstancePainterを使用していましたが、Blenderとのデータのやり取りが面倒なため今回はBlenderのみを使用して制作を行いました。初めての試みでしたが、この仕上がりならこれからはBlenderのみでも十分な感じです。",
-    "image": "images/assets/Carparking.webp",
+    "image": "images/assets/carparking.avif",
     "blenderVersion": "Blender 4.5.3",
-    "tags": ["3DModels", "Props", "Environment"]
+    "tags": [
+      "3DModels",
+      "Props"
+    ]
   }
 ]

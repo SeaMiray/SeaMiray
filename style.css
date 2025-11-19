@@ -1,6 +1,5 @@
-/* style.css - PS2グラフィック風ポートフォリオサイト 最終統合版 */
+/* style.css - PS2グラフィック風ポートフォリオサイト レスポンシブ対応版 */
 :root {
-  /* PS2実機制約に基づいたカラーパレット */
   --ps2-black: #0a0808;
   --ps2-dark-gray: #1a1715;
   --ps2-gray: #3a3633;
@@ -10,8 +9,7 @@
   --ps2-blue: #2c4aa8;
   --ps2-yellow: #a88c2c;
   --ps2-accent: #c0a080;
-  
-  /* 変数定義 */
+
   --bg-color: var(--ps2-black);
   --nav-bg: var(--ps2-dark-gray);
   --nav-border: var(--ps2-gray);
@@ -23,19 +21,22 @@
   --green-color: var(--ps2-green);
   --green-color-hover: #6b9465;
   --selection-bg: rgba(192, 160, 128, 0.15);
-  
+
   --font-primary: 'DotGothic16', 'MS Gothic', 'Hiragino Kaku Gothic ProN', monospace;
-  --font-fallback: 'Noto Sans JP', sans-serif;
-  
+
   --scanline-opacity: 0.15;
-  --noise-opacity: 0.08;
-  
-  --nav-width: 260px;
-  --nav-padding: 25px;
+  --noise-opacity: 0.05;
+
+  /* デスクトップ初期値 */
+  --nav-width: 320px;
+  --nav-padding: 55px;
+  --header-height: 0px;
+  /* デスクトップではヘッダー高さなし */
 }
 
-/* グローバルリセット */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -52,19 +53,19 @@ body {
   font-weight: 400;
   line-height: 1.4;
   overflow: hidden;
-  
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: grayscale;
-  font-smooth: never;
-  text-rendering: optimizeSpeed;
-  
-  image-rendering: optimizeSpeed;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
-  -ms-interpolation-mode: nearest-neighbor;
+  /* スクロールは main-content で制御 */
+  position: relative;
+  height: 100vh;
+  width: 100vw;
 }
 
-/* エラーメッセージ */
+/* --- ユーティリティ --- */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* --- エラー通知 --- */
 .error-notification {
   position: fixed;
   top: 20px;
@@ -75,7 +76,8 @@ body {
   border: 2px solid var(--accent-color);
   border-radius: 4px;
   z-index: 10000;
-  max-width: 300px;
+  max-width: 90%;
+  width: 300px;
   animation: slideInRight 0.5s ease-out;
 }
 
@@ -96,14 +98,20 @@ body {
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 a:focus-visible,
 button:focus-visible {
   outline: 3px solid var(--accent-color-hover);
-  outline-offset: 2px;
   box-shadow: 0 0 10px var(--accent-color-hover);
 }
 
@@ -112,9 +120,7 @@ button:focus-visible {
   color: var(--accent-color-hover);
 }
 
-/* ============================================================================
-   凝ったローディング画面 - PS2ブート風
-   ============================================================================ */
+/* --- ローディング画面 --- */
 #loading-screen {
   position: fixed;
   inset: 0;
@@ -123,7 +129,8 @@ button:focus-visible {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9000;
+  /* 最前面 */
   transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -136,19 +143,18 @@ button:focus-visible {
   position: absolute;
   top: 20px;
   left: 20px;
-  font-family: var(--font-primary);
   font-size: 0.75rem;
   color: var(--text-color-dim);
   line-height: 1.4;
 }
 
 .loading-ps2-logo {
-  font-family: var(--font-primary);
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
   color: var(--accent-color);
   letter-spacing: 5px;
   margin-bottom: 30px;
   text-shadow: 0 0 20px var(--accent-color);
+  text-align: center;
 }
 
 .ps2-trademark {
@@ -167,13 +173,17 @@ button:focus-visible {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
-  font-family: var(--font-primary);
-  font-size: 1.8rem;
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
   color: var(--accent-color);
   margin-bottom: 20px;
   letter-spacing: 3px;
@@ -181,12 +191,21 @@ button:focus-visible {
 }
 
 @keyframes loading-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.98); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    scale: 0.98;
+  }
 }
 
 .loading-bar-container {
-  width: 320px;
+  width: min(320px, 80%);
   height: 16px;
   border: 2px solid var(--nav-border);
   padding: 3px;
@@ -200,51 +219,86 @@ button:focus-visible {
   width: 0%;
   background: linear-gradient(90deg, var(--accent-color) 0%, var(--accent-color-hover) 50%, var(--accent-color) 100%);
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
   box-shadow: 0 0 10px var(--accent-color);
+  position: relative;
 }
 
 .loading-bar::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 6px,
-    rgba(255, 255, 255, 0.3) 6px,
-    rgba(255, 255, 255, 0.3) 12px
-  );
+  background: repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(255, 255, 255, 0.3) 6px, rgba(255, 255, 255, 0.3) 12px);
   animation: loading-bar-shimmer 0.3s infinite linear;
 }
 
 @keyframes loading-bar-shimmer {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(12px); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(12px);
+  }
 }
 
 .loading-stage {
   margin-top: 20px;
-  font-family: var(--font-primary);
   font-size: 0.9rem;
   color: var(--accent-color);
   letter-spacing: 1px;
+  text-align: center;
 }
 
 .loading-status {
   margin-top: 10px;
-  font-family: var(--font-primary);
   font-size: 0.75rem;
   color: var(--text-color-dim);
+  text-align: center;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ============================================================================
-   パーティクルレイヤー
-   ============================================================================ */
-.particle-layer {
+/* --- 背景演出要素 --- */
+.catch-copy,
+.catch-copy2 {
+  font-size: 40rem;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+  transform: translate(22.5%, 20%);
+  line-height: 1;
+  opacity: 0.3;
+  animation: slideUpReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpReveal {
+  0% {
+    transform: translate(22.5%, 60%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(22.5%, 20%);
+    opacity: 0.3;
+  }
+}
+
+/* --- エフェクトレイヤー (Scanlines, VHS, CRT) --- */
+.particle-layer,
+.vhs-noise,
+.scanlines,
+.crt-warp,
+.section-transition {
   position: fixed;
   inset: 0;
   pointer-events: none;
+}
+
+.particle-layer {
   z-index: 999;
 }
 
@@ -256,16 +310,10 @@ button:focus-visible {
   pointer-events: none;
 }
 
-/* ============================================================================
-   セクショントランジション
-   ============================================================================ */
 .section-transition {
-  position: fixed;
-  inset: 0;
   background: var(--bg-color);
   z-index: 2000;
   opacity: 0;
-  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
@@ -274,9 +322,105 @@ button:focus-visible {
   pointer-events: auto;
 }
 
-/* ============================================================================
-   キーボードナビゲーションインジケーター
-   ============================================================================ */
+.vhs-noise {
+  z-index: 998;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.7'/%3E%3C/svg%3E");
+  animation: vhs-drift 0.15s infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes vhs-drift {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(-1px, 0) scale(1.001);
+  }
+
+  50% {
+    transform: translate(1px, 1px) scale(0.999);
+  }
+
+  75% {
+    transform: translate(0, -1px) scale(1);
+  }
+}
+
+.scanlines {
+  z-index: 997;
+  opacity: var(--scanline-opacity);
+  background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.4) 1px, rgba(0, 0, 0, 0.4) 2px);
+  animation: scanline-flicker 0.12s infinite;
+  mix-blend-mode: multiply;
+}
+
+@keyframes scanline-flicker {
+  0% {
+    opacity: var(--scanline-opacity);
+  }
+
+  50% {
+    opacity: calc(var(--scanline-opacity) * 0.7);
+  }
+
+  100% {
+    opacity: var(--scanline-opacity);
+  }
+}
+
+.crt-warp {
+  z-index: 996;
+  mix-blend-mode: screen;
+  opacity: 0.03;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(100, 150, 255, 0.1) 50%, rgba(255, 100, 100, 0.1) 70%, transparent 100%);
+  animation: crt-warp 6s infinite ease-in-out;
+}
+
+@keyframes crt-warp {
+
+  0%,
+  100% {
+    transform: scale(1, 1) translate(0, 0);
+  }
+
+  25% {
+    transform: scale(1.001, 0.999) translate(1px, 0);
+  }
+
+  50% {
+    transform: scale(0.999, 1.001) translate(0, 1px);
+  }
+
+  75% {
+    transform: scale(1.0005, 0.9995) translate(-1px, 0);
+  }
+}
+
+/* --- UI要素 (FPS, Keyboard) --- */
+.fps-counter {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--nav-border);
+  border-radius: 4px;
+  color: var(--accent-color-hover);
+  font-size: 0.85rem;
+  z-index: 1001;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.fps-counter.visible {
+  opacity: 1;
+}
+
 .keyboard-indicator {
   position: fixed;
   bottom: 30px;
@@ -299,7 +443,6 @@ button:focus-visible {
   border: 2px solid var(--nav-border);
   color: var(--text-color-dim);
   padding: 8px 12px;
-  font-family: var(--font-primary);
   font-size: 0.85rem;
   border-radius: 4px;
   transition: all 0.3s ease;
@@ -312,356 +455,55 @@ button:focus-visible {
   box-shadow: 0 0 10px var(--accent-color);
 }
 
-/* ============================================================================
-   VHSノイズ効果
-   ============================================================================ */
-.vhs-noise {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 998;
-  opacity: var(--noise-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.7'/%3E%3C/svg%3E");
-  animation: vhs-drift 0.15s infinite;
-  mix-blend-mode: overlay;
-}
-
-@keyframes vhs-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(-1px, 0) scale(1.001); }
-  50% { transform: translate(1px, 1px) scale(0.999); }
-  75% { transform: translate(0, -1px) scale(1); }
-}
-
-/* ============================================================================
-   スキャンライン効果
-   ============================================================================ */
-.scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 997;
-  opacity: var(--scanline-opacity);
-  background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.4) 1px, rgba(0, 0, 0, 0.4) 2px);
-  animation: scanline-flicker 0.12s infinite;
-  mix-blend-mode: multiply;
-}
-
-@keyframes scanline-flicker {
-  0% { opacity: var(--scanline-opacity); }
-  50% { opacity: calc(var(--scanline-opacity) * 0.7); }
-  100% { opacity: var(--scanline-opacity); }
-}
-
-/* ============================================================================
-   CRTモニター歪み効果
-   ============================================================================ */
-.crt-warp {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 996;
-  mix-blend-mode: screen;
-  opacity: 0.03;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 30%,
-    rgba(100, 150, 255, 0.1) 50%,
-    rgba(255, 100, 100, 0.1) 70%,
-    transparent 100%
-  );
-  animation: crt-warp 6s infinite ease-in-out;
-}
-
-@keyframes crt-warp {
-  0%, 100% { transform: scale(1, 1) translate(0, 0); }
-  25% { transform: scale(1.001, 0.999) translate(1px, 0); }
-  50% { transform: scale(0.999, 1.001) translate(0, 1px); }
-  75% { transform: scale(1.0005, 0.9995) translate(-1px, 0); }
-}
-
-/* ============================================================================
-   FPSカウンター
-   ============================================================================ */
-.fps-counter {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid var(--nav-border);
-  border-radius: 4px;
-  color: var(--accent-color-hover);
-  font-family: var(--font-primary);
-  font-size: 0.85rem;
-  z-index: 1001;
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-}
-
-.fps-counter.visible {
-  opacity: 1;
-}
-
-/* ============================================================================
-   パッケージツールチップ
-   ============================================================================ */
-#package-tooltip {
-  position: fixed;
-  background: var(--nav-bg);
-  border: 2px solid var(--nav-border);
-  padding: 8px 12px;
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  font-family: var(--font-primary);
-  font-size: 12px;
-  border-radius: 4px;
-}
-
-#package-tooltip.visible {
-  opacity: 1;
-}
-
-.tooltip-title {
-  color: var(--accent-color);
-  font-weight: bold;
-}
-
-.tooltip-genre {
-  color: var(--text-color-dim);
-}
-
-/* ============================================================================
-   ゲーム説明ウィンドウ
-   ============================================================================ */
-.game-description-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1003;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.game-description-overlay.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.game-description-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(2px);
-}
-
-.description-window {
-  position: relative;
-  width: 90%;
-  max-width: 1200px;
-  height: 80vh;
-  background: var(--nav-bg);
-  border: 3px solid var(--nav-border);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 0 40px rgba(197, 168, 128, 0.3);
-  z-index: 1;
-  animation: window-open 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes window-open {
-  0% { transform: scale(0.8) translateY(50px); opacity: 0; }
-  70% { transform: scale(1.02) translateY(-5px); }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.window-frame {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.frame-line {
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 0;
-  height: 3px;
-  background: var(--accent-color);
-  box-shadow: 0 0 10px var(--accent-color);
-}
-
-.window-frame.animated .frame-line {
-  animation: frame-line-draw 0.8s ease-out forwards;
-}
-
-@keyframes frame-line-draw {
-  0% { width: 0; }
-  100% { width: calc(100% + 6px); }
-}
-
-.window-content {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: row-reverse;
-  background: 
-    linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%),
-    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px);
-}
-
-/* 低解像度テクスチャオーバーレイ */
-.ps2-texture-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.05) 1px, rgba(0,0,0,0.05) 2px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E");
-  z-index: 10;
-  mix-blend-mode: overlay;
-}
-
-/* PS2風テキストレンダリング */
-.ps2-text {
-  font-family: var(--font-primary);
-  font-size: 14px !important;
-  letter-spacing: 0.5px;
-  text-shadow: 
-    0 0 1px currentColor,
-    0.5px 0 0 rgba(255,255,255,0.1),
-    -0.5px 0 0 rgba(0,0,0,0.3);
-  image-rendering: pixelated;
-  line-height: 1.4 !important;
-}
-
-.info-panel {
-  width: 60%;
-  height: 100%;
-  padding: 40px;
-  overflow-y: auto;
-  position: relative;
-}
-
-.info-panel h3 {
-  font-family: var(--font-primary);
-  font-size: 1.8rem;
-  color: var(--accent-color);
-  margin-bottom: 20px;
-  letter-spacing: 2px;
-  border-bottom: 2px solid var(--nav-border);
-  padding-bottom: 12px;
-}
-
-.description-body {
-  font-family: var(--font-primary);
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--text-color-normal);
-  margin-bottom: 30px;
-  white-space: pre-wrap;
-}
-
-/* ゲーム統計情報パネル */
-.game-stats {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 2px solid var(--nav-border);
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  font-family: var(--font-primary);
-  font-size: 0.95rem;
-}
-
-.stat-label {
-  color: var(--text-color-dim);
-  font-weight: 400;
-}
-
-.stat-value {
-  color: var(--accent-color);
-  font-weight: 700;
-}
-
-/* 閉じるボタン */
-.close-button {
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: var(--accent-color);
-  font-size: 1.5rem;
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.3s ease;
-}
-
-.close-button:hover {
-  color: var(--accent-color-hover);
-  transform: scale(1.2);
-}
-
-/* ============================================================================
-   スクロールバーカスタマイズ
-   ============================================================================ */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-color);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--nav-border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-color);
-}
-
-/* ============================================================================
-   サイトレイアウト
-   ============================================================================ */
+/* --- サイトレイアウト --- */
 .site-wrapper {
   display: flex;
   height: 100vh;
+  width: 100%;
   position: relative;
+  z-index: 100;
 }
 
+/* サイドナビゲーション (PCデフォルト) */
+.side-nav {
+  width: var(--nav-width);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: var(--nav-bg);
+  border-right: 2px solid #000;
+  box-shadow: inset -12px 0 18px -12px rgba(0, 0, 0, 0.8), 6px 0 18px -6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  padding: var(--nav-padding) 0;
+  z-index: 100;
+  transition: width 0.4s, height 0.4s, padding 0.4s;
+}
+
+/* メインコンテンツエリア */
 .main-content {
   flex: 1;
   margin-left: var(--nav-width);
+  /* PC用マージン */
+  margin-top: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  
-  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.4s, padding-top 0.4s;
+  background: transparent !important;
+  position: relative;
 }
 
-/* セクションヘッダー */
+/* セクション共通 */
 .section-header {
-  padding: 40px 40px 20px;
+  padding: 40px 5% 20px;
   text-align: center;
 }
 
 .section-header h2 {
   margin-bottom: 10px;
+  font-size: clamp(1.5rem, 4vw, 2rem);
 }
 
 .section-description {
@@ -684,21 +526,31 @@ button:focus-visible {
 }
 
 @keyframes section-fade-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+/* 3D Canvas */
 #three-canvas-container {
   width: 100%;
   height: 100vh;
+  /* ビューポートいっぱいに */
   position: relative;
   overflow: hidden;
-  background: radial-gradient(ellipse at center, #2a2725 0%, var(--bg-color) 80%);
+  background: transparent;
+  touch-action: none;
 }
 
 #three-canvas-container canvas {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   display: block;
   cursor: pointer;
   image-rendering: pixelated;
@@ -711,43 +563,32 @@ button:focus-visible {
   transform: translateX(-50%);
   z-index: 5;
   pointer-events: none;
+  width: 90%;
+  text-align: center;
 }
 
 .scene-help {
+  display: inline-block;
   color: var(--text-color-dim);
   font-size: 0.9rem;
-  text-align: center;
   background: rgba(0, 0, 0, 0.7);
   padding: 8px 16px;
   border: 1px solid var(--nav-border);
   border-radius: 4px;
 }
 
-/* ============================================================================
-   パソコン風サイドヘッダー
-   ============================================================================ */
-.side-nav {
-  width: var(--nav-width);
-  height: 100vh;
-  position: fixed;
+/* --- ナビゲーション内部パーツ --- */
+.nav-mini-header {
+  position: absolute;
   top: 0;
   left: 0;
-  background: var(--nav-bg);
-  border-right: 2px solid #000;
-  box-shadow: 
-    inset -12px 0 18px -12px rgba(0, 0, 0, 0.8),
-    6px 0 18px -6px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  padding: var(--nav-padding) 0;
-  z-index: 100;
-  
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-              height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  height: 50px;
+  background-color: #0f0b0a;
+  border-bottom: 1px solid #2a2624;
+  z-index: 8;
 }
 
-/* システム情報バー */
 .system-info-bar {
   position: absolute;
   top: 10px;
@@ -756,11 +597,9 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-family: var(--font-primary);
   font-size: 0.7rem;
   color: var(--text-color-dim);
   z-index: 10;
-  transition: all 0.3s ease;
 }
 
 .system-time {
@@ -784,12 +623,6 @@ button:focus-visible {
   color: var(--accent-color);
 }
 
-.system-stats .stat-item span:last-child {
-  font-size: 0.7rem;
-  color: var(--text-color-bright);
-}
-
-/* ウィンドウコントロール */
 .window-controls {
   position: absolute;
   top: 10px;
@@ -797,7 +630,6 @@ button:focus-visible {
   display: flex;
   gap: 8px;
   z-index: 10;
-  transition: all 0.3s ease;
 }
 
 .window-btn {
@@ -810,7 +642,6 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-primary);
   font-size: 0.6rem;
   color: var(--text-color-dim);
   transition: all 0.2s ease;
@@ -827,15 +658,12 @@ button:focus-visible {
   color: white;
 }
 
-/* ドライブ情報 */
 .drive-info {
   position: absolute;
   bottom: 20px;
   left: 15px;
   right: 15px;
-  font-family: var(--font-primary);
   font-size: 0.7rem;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .drive-label {
@@ -865,7 +693,7 @@ button:focus-visible {
   font-size: 0.6rem;
 }
 
-/* ナビゲーションコンテンツ（下にずらす） */
+/* ナビタブ */
 .nav-noise-overlay {
   position: absolute;
   inset: 0;
@@ -891,8 +719,9 @@ button:focus-visible {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  transition: left 0.5s ease;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0.05) 60%, transparent 100%);
+  filter: blur(4px);
+  transition: left 0.6s ease-out;
 }
 
 .nav-tab:hover::before {
@@ -913,7 +742,7 @@ button:focus-visible {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 60px 0 40px; /* 上に余白を増やす */
+  padding: 60px 0 40px;
   position: relative;
   z-index: 1;
 }
@@ -922,6 +751,11 @@ button:focus-visible {
   flex-direction: column;
   align-items: center;
   padding: 20px;
+}
+
+.nav-header .nav-tab::before {
+  display: none;
+  content: none;
 }
 
 .power-button-simple {
@@ -934,6 +768,7 @@ button:focus-visible {
   transition: all 0.3s ease;
   margin-bottom: 12px;
   background: radial-gradient(circle at center, var(--nav-bg) 0%, #1f1d1c 100%);
+  flex-shrink: 0;
 }
 
 .power-button-simple::before {
@@ -952,6 +787,7 @@ button:focus-visible {
   font-size: 1.2rem;
   letter-spacing: 1px;
   transition: color 0.3s ease, opacity 0.3s ease;
+  white-space: nowrap;
 }
 
 .nav-header .nav-tab:hover .power-button-simple {
@@ -969,18 +805,17 @@ button:focus-visible {
   animation: power-pulse 2s infinite;
 }
 
-/* ★ [修正] 発光アニメーションをPC用とモバイル用で分離 */
 @keyframes power-pulse {
-  0%, 100% { box-shadow: 0 0 20px var(--accent-color), 0 0 8px var(--accent-color) inset; }
-  50% { box-shadow: 0 0 30px var(--accent-color), 0 0 12px var(--accent-color) inset; }
-}
 
-/* ★ [新設] モバイル用の小さい発光アニメーション */
-@keyframes power-pulse-mobile {
-  0%, 100% { box-shadow: 0 0 10px var(--accent-color), 0 0 4px var(--accent-color) inset; }
-  50% { box-shadow: 0 0 15px var(--accent-color), 0 0 6px var(--accent-color) inset; }
-}
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--accent-color), 0 0 8px var(--accent-color) inset;
+  }
 
+  50% {
+    box-shadow: 0 0 30px var(--accent-color), 0 0 12px var(--accent-color) inset;
+  }
+}
 
 .nav-header .nav-tab.active-tab .power-button-simple::before {
   background: var(--accent-color);
@@ -1013,6 +848,7 @@ button:focus-visible {
   margin-right: 18px;
   position: relative;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .folder-icon::before {
@@ -1042,15 +878,12 @@ button:focus-visible {
   color: var(--accent-color);
 }
 
-/* ============================================================================
-   ボタン・カードスタイル
-   ============================================================================ */
+/* --- カード & ボタン --- */
 .btn {
   background: var(--nav-bg);
   border: 2px solid var(--nav-border);
   color: var(--text-color-normal);
   padding: 12px 24px;
-  font-family: var(--font-primary);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1067,120 +900,97 @@ button:focus-visible {
   transform: translateY(-2px);
 }
 
-/* アセットグリッド */
-.asset-grid-modern {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 40px;
-  padding: 0 40px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
+/* 分岐ボタン */
+.asset-links-container {
+  position: relative;
+  min-width: 140px;
+  height: 48px;
+  z-index: 10;
 }
 
-.asset-card-modern {
+.split-btn-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: var(--nav-bg);
   border: 2px solid var(--nav-border);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.asset-card-modern:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 30px rgba(197, 168, 128, 0.25);
-  border-color: var(--accent-color);
-}
-
-.asset-image-container {
-  width: 100%;
-  height: 240px;
-  background: #2a2725;
+  color: var(--text-color-normal);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-color-dim);
-  position: relative;
-  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  z-index: 2;
 }
 
-/* ★ アセット/ポートフォリオ画像のレスポンシブ対応 */
-.asset-image-container img,
-.portfolio-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* 画像がコンテナをはみ出さず、アスペクト比を維持して埋める */
-}
-
-.asset-badge {
+.split-btn-menu {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: var(--accent-color);
-  color: var(--bg-color);
-  padding: 6px 12px;
-  font-family: var(--font-primary);
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-radius: 3px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--nav-bg);
+  border: 2px solid var(--accent-color);
+  border-radius: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   z-index: 1;
 }
 
-.asset-badge.popular {
-  background: var(--ps2-yellow);
+.asset-links-container:hover .split-btn-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  z-index: 3;
+  bottom: -10px;
 }
 
-.asset-content {
-  padding: 30px;
+.asset-links-container:hover .split-btn-trigger {
+  opacity: 0;
+  pointer-events: none;
 }
 
-.asset-content h3 {
-  margin-bottom: 15px;
-  font-size: 1.3rem;
+.shop-link-item {
+  padding: 12px;
+  text-align: center;
   color: var(--text-color-bright);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+  border-bottom: 1px solid var(--nav-border);
+  display: block;
 }
 
-.asset-description {
-  color: var(--text-color-normal);
-  margin-bottom: 20px;
-  min-height: 60px;
+.shop-link-item:last-child {
+  border-bottom: none;
 }
 
-.asset-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  font-size: 0.85rem;
-  color: var(--text-color-dim);
-  flex-wrap: wrap; /* モバイルで折り返す */
-  gap: 10px;
+.shop-link-item:hover {
+  background: var(--accent-color);
+  color: var(--bg-color);
 }
 
-.asset-footer {
-  padding: 0 30px 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.asset-price {
-  font-family: var(--font-primary);
-  font-size: 1.2rem;
-  color: var(--accent-color);
-  font-weight: 700;
-}
-
-/* ポートフォリオグリッド */
+/* カードグリッド (レスポンシブ調整: minmaxを小さく) */
+.asset-grid-modern,
 .portfolio-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-  gap: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* スマホで1カラムになるように調整 */
+  gap: 30px;
   padding: 0 40px 40px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
+.asset-card-modern,
 .portfolio-card {
   background: var(--nav-bg);
   border: 2px solid var(--nav-border);
@@ -1191,20 +1001,94 @@ button:focus-visible {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
+.asset-card-modern:hover,
 .portfolio-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 30px rgba(197, 168, 128, 0.2);
+  transform: translateY(-8px);
+  box-shadow: 0 8px 30px rgba(197, 168, 128, 0.25);
+  border-color: var(--accent-color);
 }
 
+.asset-image-container,
 .portfolio-image {
   width: 100%;
-  height: 280px;
+  height: 200px;
   background: #2a2725;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-color-dim);
   position: relative;
+  overflow: hidden;
+}
+
+.asset-image-container img,
+.portfolio-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: var(--accent-color);
+  color: var(--bg-color);
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.asset-badge.popular {
+  background: var(--ps2-yellow);
+}
+
+.asset-content,
+.portfolio-info {
+  padding: 20px;
+}
+
+.asset-content h3,
+.portfolio-header h3 {
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  color: var(--text-color-bright);
+}
+
+.asset-description,
+.portfolio-description {
+  color: var(--text-color-normal);
+  margin-bottom: 20px;
+  min-height: 60px;
+  font-size: 0.9rem;
+}
+
+.asset-meta,
+.portfolio-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 0.8rem;
+  color: var(--text-color-dim);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.asset-footer {
+  padding: 0 20px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.asset-price {
+  font-size: 1.1rem;
+  color: var(--accent-color);
+  font-weight: 700;
 }
 
 .portfolio-date {
@@ -1213,56 +1097,30 @@ button:focus-visible {
   left: 15px;
   background: rgba(0, 0, 0, 0.7);
   padding: 6px 12px;
-  font-family: var(--font-primary);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--accent-color);
   border-radius: 3px;
 }
 
-.portfolio-info {
-  padding: 30px;
-}
-
-.portfolio-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap; /* モバイルで折り返す */
-  gap: 10px;
-}
-
-.portfolio-header h3 {
-  font-size: 1.3rem;
-  color: var(--text-color-bright);
-}
-
 .blender-version {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-color-dim);
   background: rgba(0, 0, 0, 0.3);
   padding: 4px 8px;
   border-radius: 3px;
 }
 
-.portfolio-description {
-  color: var(--text-color-normal);
-  margin-bottom: 20px;
-  min-height: 40px;
-}
-
 .portfolio-tags {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .tag {
   background: var(--nav-border);
   color: var(--text-color-dim);
-  padding: 4px 10px;
-  font-family: var(--font-primary);
-  font-size: 0.75rem;
+  padding: 4px 8px;
+  font-size: 0.7rem;
   border-radius: 3px;
   transition: all 0.3s ease;
 }
@@ -1272,170 +1130,637 @@ button:focus-visible {
   color: var(--bg-color);
 }
 
+/* --- 説明ウィンドウ (モーダル) --- */
+.game-description-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1003;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 20px;
+}
+
+.game-description-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.game-description-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(2px);
+}
+
+.description-window {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  height: 80vh;
+  max-height: 800px;
+  background: var(--nav-bg);
+  border: 3px solid var(--nav-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(197, 168, 128, 0.3);
+  z-index: 1;
+  animation: window-open 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes window-open {
+  0% {
+    transform: scale(0.8) translateY(50px);
+    opacity: 0;
+  }
+
+  70% {
+    transform: scale(1.02) translateY(-5px);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.window-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.frame-line {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 0;
+  height: 3px;
+  background: var(--accent-color);
+  box-shadow: 0 0 10px var(--accent-color);
+}
+
+.window-frame.animated .frame-line {
+  animation: frame-line-draw 0.8s ease-out forwards;
+}
+
+@keyframes frame-line-draw {
+  0% {
+    width: 0;
+  }
+
+  100% {
+    width: calc(100% + 6px);
+  }
+}
+
+.window-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row-reverse;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%), repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px);
+  overflow: hidden;
+}
+
+.ps2-texture-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.05) 1px, rgba(0, 0, 0, 0.05) 2px), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E");
+  z-index: 10;
+  mix-blend-mode: overlay;
+}
+
+.ps2-text {
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 1px currentColor, 0.5px 0 0 rgba(255, 255, 255, 0.1), -0.5px 0 0 rgba(0, 0, 0, 0.3);
+  image-rendering: pixelated;
+  line-height: 1.4 !important;
+}
+
+.info-panel {
+  width: 100%;
+  height: 100%;
+  padding: 40px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.info-panel h3 {
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  color: var(--accent-color);
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+  border-bottom: 2px solid var(--nav-border);
+  padding-bottom: 12px;
+}
+
+.description-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-color-normal);
+  margin-bottom: 30px;
+  white-space: pre-wrap;
+}
+
+.game-stats {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid var(--nav-border);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.stat-label {
+  color: var(--text-color-dim);
+  font-weight: 400;
+}
+
+.stat-value {
+  color: var(--accent-color);
+  font-weight: 700;
+  text-align: right;
+  max-width: 60%;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--accent-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: var(--accent-color);
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 20;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: var(--accent-color);
+  color: var(--bg-color);
+  transform: scale(1.1);
+}
+
+/* スクロールバー */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nav-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* --- 背景演出と3Dアイコン (z-index強制) --- */
+#layer-atmosphere {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  background-image: radial-gradient(white, rgba(255, 255, 255, 0.1) 2px, transparent 3px), radial-gradient(white, rgba(255, 255, 255, 0.05) 1px, transparent 2px);
+  background-size: 500px 500px, 300px 300px;
+  background-position: 0 0, 100px 150px;
+  opacity: 0.2;
+  animation: mist-move 60s linear infinite;
+}
+
+@keyframes mist-move {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-500px);
+  }
+}
+
+#layer-asset-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#layer-asset-bg.active {
+  opacity: 1;
+}
+
+#layer-asset-bg .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center center;
+  opacity: 0;
+  transition: opacity 0.8s ease, transform 5s ease;
+}
+
+#layer-asset-bg .bg-overlay-color {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2;
+}
+
+#layer-asset-bg[data-mode="normal"] .bg-image.normal {
+  opacity: 0.8;
+  filter: blur(10px);
+  transform: scale(1.05);
+  z-index: 1;
+}
+
+#layer-asset-bg[data-mode="wireframe"] .bg-image.wireframe {
+  opacity: 0.4;
+  filter: none;
+  transform: scale(1.05);
+  z-index: 3;
+}
+
+#layer-asset-bg[data-mode="wireframe"] .bg-image.normal {
+  opacity: 0;
+}
+
+#layer-save-icon {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.7;
+  animation: icon-breathe 3s infinite ease-in-out;
+  pointer-events: none;
+}
+
+.ps2-cube {
+  width: 24px;
+  height: 36px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: cube-spin 4s infinite linear;
+}
+
+.ps2-cube .face {
+  position: absolute;
+  border: 1px solid var(--accent-color);
+  background: rgba(10, 8, 8, 0.85);
+  box-shadow: 0 0 5px rgba(192, 160, 128, 0.2);
+}
+
+.ps2-cube .front,
+.ps2-cube .back {
+  width: 24px;
+  height: 36px;
+}
+
+.ps2-cube .front {
+  transform: translateZ(12px);
+}
+
+.ps2-cube .back {
+  transform: rotateY(180deg) translateZ(12px);
+}
+
+.ps2-cube .right,
+.ps2-cube .left {
+  width: 24px;
+  height: 36px;
+}
+
+.ps2-cube .right {
+  transform: rotateY(90deg) translateZ(12px);
+}
+
+.ps2-cube .left {
+  transform: rotateY(-90deg) translateZ(12px);
+}
+
+.ps2-cube .top,
+.ps2-cube .bottom {
+  width: 24px;
+  height: 24px;
+}
+
+.ps2-cube .top {
+  transform: rotateX(90deg) translateZ(12px);
+}
+
+.ps2-cube .bottom {
+  transform: rotateX(-90deg) translateZ(24px);
+}
+
+.ps2-cube .core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: var(--ps2-blue);
+  box-shadow: 0 0 15px var(--ps2-blue);
+  border-radius: 50%;
+}
+
+.save-text {
+  font-size: 10px;
+  color: var(--text-color-dim);
+  letter-spacing: 1px;
+}
+
+@keyframes cube-spin {
+  0% {
+    transform: rotateX(-15deg) rotateY(0deg);
+  }
+
+  100% {
+    transform: rotateX(-15deg) rotateY(360deg);
+  }
+}
+
+@keyframes icon-breathe {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 /* ============================================================================
-   14. レスポンシブ対応 - モバイルフレンドリー修正
+   ★ レスポンシブ対応 (Mobile & Tablet)
    ============================================================================ */
-/* ★ [修正] ブレークポイントを 800px -> 1024px に変更 */
+
 @media (max-width: 1024px) {
   :root {
-    /* ★ ナビゲーションをトップヘッダーに変更 */
-    --nav-width: 0px; 
-    /* ★ [修正] ヘッダーの高さを 100px に変更 */
-    --header-height: 100px; 
+    --nav-width: 0px;
+    --header-height: 100px;
+    /* スマホ用ヘッダー高さ */
   }
-  
+
+  /* レイアウト変更: サイドバーを上部ヘッダーへ */
   .side-nav {
-    /* ★ トップヘッダー化 */
     width: 100%;
     height: var(--header-height);
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 0 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    padding: 0 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     border-right: none;
     border-bottom: 2px solid #000;
-  }
-  
-  .main-content {
-    /* ★ margin-left を 0 に、padding-top をヘッダーの高さに */
-    margin-left: 0;
-    padding-top: var(--header-height); 
+    background: var(--nav-bg);
   }
 
-  /* ★ [修正] モバイルで不要な要素のみ非表示 (テキストは表示) */
+  .main-content {
+    margin-left: 0;
+    margin-top: var(--header-height);
+    /* ヘッダー分の余白 */
+    height: calc(100vh - var(--header-height));
+  }
+
+  /* 非表示要素 */
   .system-info-bar,
   .drive-info,
   .window-controls,
-  .keyboard-indicator {
+  .keyboard-indicator,
+  .catch-copy,
+  .catch-copy2,
+  .nav-mini-header {
     display: none;
   }
-  
-  /* ★ [修正] テキストとアイコンが横並びになるよう調整 */
+
+  /* ナビゲーション調整 */
   .nav-header {
     width: auto;
     padding: 0;
+    border: none;
+    margin-right: 10px;
   }
+
   .nav-header .nav-tab {
-    padding: 10px;
-    flex-direction: row; /* ★ 横並び */
-    align-items: center; /* ★ 中央揃え */
+    padding: 5px;
+    flex-direction: row;
+    align-items: center;
   }
+
   .power-button-simple {
+    width: 36px;
+    height: 36px;
     margin-bottom: 0;
-    width: 40px;
-    height: 40px;
-    margin-right: 15px; /* ★ [修正] テキストとのマージンを 10px -> 15px に */
+    margin-right: 8px;
+    border-width: 2px;
   }
+
   .nav-text-power {
-    font-size: 1.0rem; /* ★ フォントサイズを調整 */
+    font-size: 0.9rem;
   }
-  
+
   .nav-list {
     display: flex;
     flex-direction: row;
-  }
-  .nav-item-folder .nav-tab {
-    padding: 10px 15px;
-    border: none;
-    flex-direction: row; /* ★ 横並び */
-    align-items: center; /* ★ 中央揃え */
-  }
-  .folder-icon {
-    margin-right: 8px;
-  }
-  .nav-text {
-      font-size: 1.0rem; /* ★ フォントサイズを調整 */
+    flex: 1;
+    justify-content: flex-end;
+    gap: 5px;
   }
 
-  
-  /* ★ 3Dビューのヘルプテキストを小さく */
+  .nav-item-folder .nav-tab {
+    padding: 8px 10px;
+    border: 1px solid var(--nav-border);
+    border-radius: 4px;
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    justify-content: center;
+  }
+
+  .nav-text {
+    font-size: 0.8rem;
+  }
+
+  .folder-icon {
+    width: 20px;
+    height: 16px;
+    margin-right: 6px;
+  }
+
+  .folder-icon::before {
+    width: 8px;
+    height: 3px;
+    top: -4px;
+  }
+
+  /* アクティブタブのエフェクト調整 (モバイルでは控えめに) */
+  .nav-header .nav-tab.active-tab .power-button-simple {
+    box-shadow: 0 0 10px var(--accent-color), 0 0 4px var(--accent-color) inset;
+    animation: none;
+    /* パフォーマンスのためアニメーション停止 */
+  }
+
+  /* グリッドとコンテンツ */
+  .asset-grid-modern,
+  .portfolio-grid {
+    padding: 20px;
+    gap: 20px;
+    grid-template-columns: 1fr;
+    /* 完全1カラム */
+  }
+
+  .section-header {
+    padding: 20px 15px;
+  }
+
+  .section-header h2 {
+    font-size: 1.5rem;
+  }
+
+  /* 3Dシーン調整 */
+  #three-canvas-container {
+    height: calc(100vh - var(--header-height));
+  }
+
   .scene-info {
     bottom: 20px;
-    left: 10px;
-    transform: none;
+    width: 95%;
+    padding: 0 10px;
   }
+
   .scene-help {
     font-size: 0.75rem;
     padding: 6px 10px;
-  }
-  
-  /* ★ ポップアップウィンドウのレイアウト */
-  .description-window {
-    width: 95%;
-    height: 90vh;
-    flex-direction: column;
-  }
-  
-  .window-content {
-    flex-direction: column !important; /* 強制的に上書き */
-  }
-  
-  .info-panel {
     width: 100%;
-    height: 50%; /* ★ 50% に変更 */
-    padding: 25px; 
+    box-sizing: border-box;
+  }
+
+  /* モーダル (縦並び) */
+  .description-window {
+    height: auto;
+    max-height: 85vh;
+    width: 95%;
     overflow-y: auto;
   }
-  
-  .info-panel h3 {
-    font-size: 1.5rem;
+
+  .window-content {
+    flex-direction: column !important;
+    /* 画像上、テキスト下 */
+    height: auto;
+    overflow: visible;
   }
-  .description-body {
-    font-size: 0.9rem;
-  }
-  
-  .model-view-area {
+
+  .info-panel {
     width: 100%;
-    height: 50%; /* ★ 50% に変更 */
-    border-right: none;
-    border-bottom: 2px solid var(--nav-border);
+    padding: 20px;
+    height: auto;
   }
 
-  /* ★ カードグリッドを1列に */
-  .asset-grid-modern,
-  .portfolio-grid {
-    grid-template-columns: 1fr;
-    gap: 30px;
-    padding: 0 20px 30px;
-  }
-  
-  .section-header {
-    padding: 30px 20px 15px;
-  }
-  
-  .section-header h2 {
-    font-size: 1.8rem;
-  }
-  .section-description {
-    font-size: 0.9rem;
-  }
-
-  /* ★ ローディング画面の調整 */
-  .loading-text {
-    font-size: 1.4rem;
-  }
-  
-  .loading-bar-container {
-    width: 220px;
-  }
-  
-  .loading-system-info {
-    font-size: 0.6rem;
-  }
-  
+  /* ローディング画面調整 */
   .loading-ps2-logo {
-    font-size: 1.8rem;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
   }
 
-  /* ★ [バグ修正] モバイルヘッダー発光アニメーション */
-  .nav-header .nav-tab.active-tab .power-button-simple {
-    box-shadow: 0 0 15px var(--accent-color), 0 0 5px var(--accent-color) inset;
-    animation: power-pulse-mobile 2s infinite; /* ★ モバイル用アニメーションを指定 */
+  .loading-text {
+    margin-bottom: 15px;
   }
 
-  @keyframes power-pulse-mobile {
-    0%, 100% { box-shadow: 0 0 15px var(--accent-color), 0 0 5px var(--accent-color) inset; }
-    50% { box-shadow: 0 0 20px var(--accent-color), 0 0 8px var(--accent-color) inset; }
+  #layer-save-icon {
+    bottom: 20px;
+    right: 20px;
+    transform: scale(0.8);
+  }
+}
+
+/* スマートフォン縦向き特化 (さらに小さい画面) */
+@media (max-width: 480px) {
+  :root {
+    --header-height: 90px;
+  }
+
+  .nav-text-power,
+  .nav-text {
+    display: none;
+  }
+
+  /* 文字を消してアイコンのみにする */
+  .nav-header {
+    margin-right: 5px;
+  }
+
+  .power-button-simple {
+    margin-right: 0;
+  }
+
+  .nav-item-folder .nav-tab {
+    padding: 10px;
+  }
+
+  .folder-icon {
+    margin-right: 0;
+  }
+
+  .nav-list {
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .nav-header .nav-tab {
+    padding: 5px;
+  }
+
+  .asset-image-container,
+  .portfolio-image {
+    height: 180px;
+  }
+
+  .asset-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .asset-links-container,
+  .btn {
+    width: 100%;
+    text-align: center;
   }
 }

@@ -1,6 +1,5 @@
 // =============================================================================
-// PS2ポートフォリオサイト - 完全版 script.js
-// 修正版: SkinnedMesh警告対応 + cat.glbシェイプキー削除 + パッケージシェイプキー維持
+// PS2ポートフォリオサイト - 完全版 script.js (最終修正版)
 // =============================================================================
 
 // =============================================================================
@@ -8,22 +7,16 @@
 // =============================================================================
 const CONFIG = {
   // ★★★ ファイルパス設定（環境に合わせて変更）★★★
-  // 例1: cat.glbをmodelsフォルダ直下に配置した場合
   CAT_PATH: './models/cat.glb',
-  
-  // 例2: cat.glbをmodels/animals/フォルダに配置した場合
-  // CAT_PATH: './models/animals/cat.glb',
-  
-  // その他のモデルパス
   MODELS_PATH: './models/',
   SCENE_PATH: './models/Scene.glb',
   LIGHT_PATH: './models/light.glb',
-  HDRI_PATH: './hdr.exr',
-  
+  HDRI_PATH: './hdr.avif',
+
   // 機能設定
   USE_ABSOLUTE_PATH: false,
   DEBUG_MODE: true,
-  
+
   // カメラシェイク設定
   CAMERA_SHAKE: {
     enabled: true,
@@ -32,7 +25,7 @@ const CONFIG = {
     trauma: 0,
     traumaDecay: 0.8
   },
-  
+
   // ポストプロセス設定
   POST_PROCESSING: {
     fogEnabled: true,
@@ -41,17 +34,17 @@ const CONFIG = {
     pixelateEnabled: false,
     chromaticAberration: true
   },
-  
+
   // 自動回転設定
   AUTO_ROTATION: {
     enabled: true,
     speed: 0.5
   },
-  
+
   // パフォーマンス設定
   PERFORMANCE: {
     frameSkip: 1,
-    enableSound: false,
+    enableSound: true,
     particleEffects: true,
     pixelRatio: 2.0
   }
@@ -63,48 +56,63 @@ const CONFIG = {
 class PS2SoundManager {
   constructor() {
     this.enabled = CONFIG.PERFORMANCE.enableSound;
-    if (this.enabled) {
-      try {
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        this.masterGain = this.audioContext.createGain();
-        this.masterGain.connect(this.audioContext.destination);
-        this.masterGain.gain.value = 0.3;
-      } catch (e) {
-        console.warn('オーディオコンテキスト初期化失敗:', e);
-        this.enabled = false;
-      }
+    this.audioContext = null;
+    this.masterGain = null;
+  }
+
+  init() {
+    if (!this.enabled || this.audioContext) return;
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.audioContext.createGain();
+      this.masterGain.connect(this.audioContext.destination);
+      this.masterGain.gain.value = 0.3;
+      console.log('✅ AudioContext 初期化完了');
+    } catch (e) {
+      console.warn('オーディオコンテキスト初期化失敗:', e);
+      this.enabled = false;
     }
   }
-  
+
+  resume() {
+    if (this.audioContext && this.audioContext.state !== 'running') {
+      this.audioContext.resume().then(() => {
+        console.log('✅ AudioContext 再開');
+      });
+    }
+  }
+
   playBootSound() {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.audioContext) return;
+    this.resume();
     try {
       const osc = this.audioContext.createOscillator();
       const gain = this.audioContext.createGain();
       const filter = this.audioContext.createBiquadFilter();
-      
+
       osc.connect(filter);
       filter.connect(gain);
       gain.connect(this.masterGain);
-      
+
       osc.frequency.value = 100;
       osc.type = 'sawtooth';
       filter.type = 'lowpass';
       filter.frequency.value = 200;
-      
+
       gain.gain.setValueAtTime(0, this.audioContext.currentTime);
       gain.gain.linearRampToValueAtTime(0.1, this.audioContext.currentTime + 0.1);
       gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.8);
-      
+
       osc.start(this.audioContext.currentTime);
       osc.stop(this.audioContext.currentTime + 0.8);
     } catch (e) {
       console.warn('ブートサウンド再生失敗:', e);
     }
   }
-  
+
   playClick() {
     if (!this.enabled || !this.audioContext) return;
+    this.resume();
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
     osc.connect(gain);
@@ -116,9 +124,10 @@ class PS2SoundManager {
     osc.start(this.audioContext.currentTime);
     osc.stop(this.audioContext.currentTime + 0.1);
   }
-  
+
   playSelect() {
     if (!this.enabled || !this.audioContext) return;
+    this.resume();
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
     osc.connect(gain);
@@ -130,9 +139,10 @@ class PS2SoundManager {
     osc.start(this.audioContext.currentTime);
     osc.stop(this.audioContext.currentTime + 0.3);
   }
-  
+
   playError() {
     if (!this.enabled || !this.audioContext) return;
+    this.resume();
     const osc = this.audioContext.createOscillator();
     const gain = this.audioContext.createGain();
     osc.connect(gain);
@@ -155,51 +165,51 @@ class PS2ParticleSystem {
     this.particles = [];
     this.active = CONFIG.PERFORMANCE.particleEffects;
   }
-  
+
   createBurst(position, color = 0xc5a880, count = 12) {
     if (!this.active) return;
-    
+
     for (let i = 0; i < count; i++) {
       const particle = document.createElement('div');
       particle.className = 'particle';
       particle.style.left = `${position.x}px`;
       particle.style.top = `${position.y}px`;
       particle.style.background = `radial-gradient(circle, #${color.toString(16)} 0%, transparent 70%)`;
-      
+
       const angle = (Math.PI * 2 * i) / count;
       const velocity = 3 + Math.random() * 4;
       const vx = Math.cos(angle) * velocity;
       const vy = Math.sin(angle) * velocity;
-      
+
       this.container.appendChild(particle);
       this.animateParticle(particle, vx, vy);
     }
   }
-  
+
   animateParticle(particle, vx, vy) {
     let x = parseFloat(particle.style.left);
     let y = parseFloat(particle.style.top);
     let opacity = 1;
     let scale = 1;
-    
+
     const animate = () => {
       x += vx;
       y += vy;
       opacity -= 0.02;
       scale -= 0.015;
-      
+
       particle.style.left = `${x}px`;
       particle.style.top = `${y}px`;
       particle.style.opacity = opacity;
       particle.style.transform = `scale(${scale})`;
-      
+
       if (opacity > 0 && scale > 0) {
         requestAnimationFrame(animate);
       } else {
         particle.remove();
       }
     };
-    
+
     requestAnimationFrame(animate);
   }
 }
@@ -210,14 +220,14 @@ class PS2ParticleSystem {
 class PS2Portfolio {
   constructor() {
     console.log('🚀 PS2Portfolio初期化開始');
-    
+
     this.gameSceneInitialized = false;
-    this.desktopNavWidth = 260; 
+    this.desktopNavWidth = 260;
     this.mobileHeaderHeight = 100;
-    
+
     const isMobile = (window.innerWidth <= 1024);
-    this.sideNavWidth = isMobile ? 0 : this.desktopNavWidth; 
-    
+    this.sideNavWidth = isMobile ? 0 : this.desktopNavWidth;
+
     this.isLoadingComplete = false;
     this.isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
     this.isAnimating = false;
@@ -225,59 +235,60 @@ class PS2Portfolio {
     this.hoveredObject = null;
     this.currentKeyboardIndex = 0;
     this.sectionTransitioning = false;
-    
+
     this.models = [];
     this.gamePackages = [];
-    this.assets = []; 
-    this.portfolio = []; 
-    
-    // ★★★ cat.glb関連のプロパティ（シェイプキー関連は削除）★★★
+    this.assets = [];
+    this.portfolio = [];
+
     this.catMixer = null;
     this.catModel = null;
-    // this.catCylinderMesh = null; // 削除
-    // this.catwalkShapeKeyIndex = -1; // 削除
-    
+
     this.scene = null;
     this.camera = null;
     this.renderer = null;
     this.gltfLoader = null;
     this.composer = null;
     this.chromaticPass = null;
-    
+    this.mouseLight = null;
+    this.targetMouseLightIntensity = 0;
+
     this.desktopCameraPos = new THREE.Vector3(6, 2.5, 5);
     this.desktopLookAt = new THREE.Vector3(-1.5, 0, -1);
-    
+
     this.mobileCameraPos = new THREE.Vector3(6, 1.8, 5);
     this.mobileLookAt = new THREE.Vector3(-2.5, 0, -0.5);
-    
+
     this.activeCameraPos = isMobile ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobile ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
-    
+
     this.originalCameraRotation = new THREE.Euler();
     this.cameraShakeOffset = new THREE.Vector3();
     this.cameraNoise = new THREE.Vector3();
-    
+
     this.resourcesToLoad = 0;
     this.resourcesLoaded = 0;
-    
+
     this.frameCount = 0;
     this.lastTime = performance.now();
+    this.lastFpsTime = performance.now();
+    this.lastRenderTime = performance.now(); // 60fps制限用
     this.fps = 0;
-    
+
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
-    
+
     this.clock = new THREE.Clock();
     this.mixers = [];
-    
+
     this.soundManager = new PS2SoundManager();
     this.particleSystem = new PS2ParticleSystem(
       document.getElementById('particle-layer')
     );
-    
+
     this.init();
   }
-  
+
   async init() {
     try {
       this.setupLoading();
@@ -289,58 +300,69 @@ class PS2Portfolio {
       this.setupDebugTools();
       this.setupSectionTransition();
       this.setupSystemInfo();
-      
+
       await this.loadAllData();
-      
-      const initialActiveTab = document.querySelector('.nav-tab.active-tab');
-      if (initialActiveTab?.dataset.target === 'game-dev') {
-        if (!this.gameSceneInitialized) {
-          console.log('🎮 初期ロードでgame-devを検出。3Dシーンを開始します。');
+
+      // ★ 修正: ロード完了後、クリック待ちメッセージを表示し、イベントリスナーを設定
+      const loadingText = document.querySelector('.loading-text');
+      if (loadingText) loadingText.textContent = 'Load complete.';
+
+      const startApp = async () => {
+        this.soundManager.init();
+        this.soundManager.playBootSound();
+
+        const initialActiveTab = document.querySelector('.nav-tab.active-tab');
+        if (initialActiveTab?.dataset.target === 'game-dev' && !this.gameSceneInitialized) {
           await this.initGameScene();
           this.gameSceneInitialized = true;
         }
-      }
-      
-      this.renderCurrentSection();
-      
+
+        this.renderCurrentSection();
+        this.startVHSNoiseAnimation();
+
+        setTimeout(() => {
+          document.getElementById('loading-screen')?.classList.add('hidden');
+        }, 500);
+      };
+
+      // 自動的に開始
+      startApp();
+
     } catch (error) {
       console.error('❌ 初期化中にエラーが発生しました:', error);
       this.showError('初期化エラー', error.message);
     }
   }
-  
+
   async loadAllData() {
     const stage = document.getElementById('loading-stage');
-    const status = document.getElementById('loading-status');
-    
+
     if (stage) stage.textContent = 'Loading data files...';
-    
+
     const [assetsResult, portfolioResult] = await Promise.allSettled([
       this.loadAssets(),
       this.loadPortfolio()
     ]);
-    
+
     if (assetsResult.status === 'fulfilled') {
       this.assets = assetsResult.value;
-      console.log(`📦 ${this.assets.length}個のアセットデータを読み込みました`);
     } else {
-      console.warn('⚠️ assets.jsonの読み込みに失敗しました:', assetsResult.reason);
       this.assets = [];
     }
-    
+
     if (portfolioResult.status === 'fulfilled') {
       this.portfolio = portfolioResult.value;
-      console.log(`📝 ${this.portfolio.length}個のポートフォリオデータを読み込みました`);
     } else {
-      console.warn('⚠️ portfolio.jsonの読み込みに失敗しました:', portfolioResult.reason);
       this.portfolio = [];
     }
-    
+
     this.resourcesToLoad += 2;
     this.resourceLoaded('assets.json');
     this.resourceLoaded('portfolio.json');
+
+    this.isLoadingComplete = true;
   }
-  
+
   async loadAssets() {
     try {
       const response = await fetch('./assets.json');
@@ -352,7 +374,7 @@ class PS2Portfolio {
       return [];
     }
   }
-  
+
   async loadPortfolio() {
     try {
       const response = await fetch('./portfolio.json');
@@ -364,11 +386,11 @@ class PS2Portfolio {
       return [];
     }
   }
-  
+
   renderCurrentSection() {
     const activeTab = document.querySelector('.nav-tab.active-tab');
     if (!activeTab) return;
-    
+
     const targetId = activeTab.dataset.target;
     if (targetId === 'assets' && this.assets.length > 0) {
       this.renderAssets();
@@ -376,78 +398,111 @@ class PS2Portfolio {
       this.renderPortfolio();
     }
   }
-  
+
   renderAssets() {
     const container = document.getElementById('asset-grid');
-    if (!container || container.children.length > 0) return; 
-    
-    console.log('🎨 アセットグリッドをレンダリング開始');
-    
+    if (!container || container.children.length > 0) return;
+
+    const bgLayer = document.getElementById('layer-asset-bg');
+    const imgNormal = bgLayer ? bgLayer.querySelector('.bg-image.normal') : null;
+    const imgWire = bgLayer ? bgLayer.querySelector('.bg-image.wireframe') : null;
+
+    console.log('🎨 renderAssets開始');
+
+    let hoverTimer = null;
+
     if (this.assets.length === 0) {
-      container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;"><h3>データ読み込みエラー</h3><p>販売アセットのデータが見つかりません。</p></div>`;
+      container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto;"><h3>データ読み込みエラー</h3><p>データがありません。</p></div>`;
       return;
     }
-    
-    this.assets.forEach((asset, index) => {
+
+    this.assets.forEach((asset) => {
       const card = document.createElement('div');
       card.className = 'asset-card-modern';
+
+      const links = asset.links || (asset.link ? [{ label: '詳細を見る', url: asset.link }] : []);
+      let buttonsHtml = links.length > 0
+        ? `<div class="asset-links-container"><div class="split-btn-trigger">詳細を見る</div><div class="split-btn-menu">${links.map(l => `<a href="${l.url}" target="_blank" class="shop-link-item">${l.label}</a>`).join('')}</div></div>`
+        : `<button class="btn" disabled>準備中</button>`;
+
       card.innerHTML = `
         <div class="asset-image-container">
-          <img src="${asset.image}" alt="${asset.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='">
+          <img src="${asset.image}" alt="${asset.title}">
           ${asset.badge ? `<span class="asset-badge ${asset.badge === '人気' ? 'popular' : ''}">${asset.badge}</span>` : ''}
         </div>
         <div class="asset-content">
           <h3 class="ps2-text">${asset.title}</h3>
           <p class="asset-description ps2-text">${asset.description}</p>
           <div class="asset-meta">
-            <span>ポリゴン: ${asset.polycount}</span>
-            <span>対応: ${asset.software}</span>
+            <span>${asset.polycount}</span>
+            <span>${asset.software}</span>
           </div>
         </div>
         <div class="asset-footer">
           <span class="asset-price ps2-text">${asset.price}</span>
-          <button class="btn" data-link="${asset.link}">詳細を見る</button>
+          ${buttonsHtml}
         </div>
       `;
-      
-      const img = card.querySelector('img');
-      img.addEventListener('error', () => {
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
-      });
-      
-      const button = card.querySelector('.btn');
-      button.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.soundManager.playClick();
-        this.particleSystem.createBurst({ x: e.clientX, y: e.clientY }, 0xc5a880);
-        setTimeout(() => {
-          window.open(asset.link, '_blank');
-        }, 200);
-      });
-      
+
+      card.querySelector('img').onerror = function () {
+        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PC9zdmc+';
+      };
+
+      if (bgLayer && imgNormal && imgWire) {
+        card.addEventListener('mouseenter', () => {
+          const normalSrc = asset.image;
+          const wireSrc = asset.wireframe_image || asset.image;
+
+          imgNormal.style.backgroundImage = `url('${normalSrc}')`;
+          imgWire.style.backgroundImage = `url('${wireSrc}')`;
+
+          bgLayer.classList.add('active');
+          bgLayer.setAttribute('data-mode', 'normal');
+
+          if (hoverTimer) clearTimeout(hoverTimer);
+          hoverTimer = setTimeout(() => {
+            bgLayer.setAttribute('data-mode', 'wireframe');
+            this.soundManager.playSelect();
+          }, 1000);
+        });
+
+        card.addEventListener('mouseleave', () => {
+          if (hoverTimer) clearTimeout(hoverTimer);
+
+          bgLayer.classList.remove('active');
+
+          setTimeout(() => {
+            bgLayer.setAttribute('data-mode', 'normal');
+          }, 500);
+        });
+      }
+
+      const btn = card.querySelector('.asset-links-container');
+      if (btn) btn.addEventListener('mouseenter', () => this.soundManager.playSelect());
+
       container.appendChild(card);
     });
-    
-    console.log('✅ アセットグリッドレンダリング完了');
+
+    console.log('✅ アセットグリッド描画完了');
   }
-  
+
   renderPortfolio() {
     const container = document.getElementById('portfolio-grid');
-    if (!container || container.children.length > 0) return; 
-    
+    if (!container || container.children.length > 0) return;
+
     console.log('📝 ポートフォリオグリッドをレンダリング開始');
-    
+
     if (this.portfolio.length === 0) {
       container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto; max-width: 600px;"><h3>データ読み込みエラー</h3><p>制作記録のデータが見つかりません。</p></div>`;
       return;
     }
-    
+
     this.portfolio.forEach((item, index) => {
       const card = document.createElement('div');
       card.className = 'portfolio-card';
       card.innerHTML = `
         <div class="portfolio-image">
-          <img src="${item.image}" alt="${item.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=;>
+          <img src="${item.image}" alt="${item.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';>
           <div class="portfolio-date ps2-text">${item.date}</div>
         </div>
         <div class="portfolio-info">
@@ -459,12 +514,12 @@ class PS2Portfolio {
           <div class="portfolio-tags" id="tags-${index}"></div>
         </div>
       `;
-      
+
       const img = card.querySelector('img');
       img.addEventListener('error', () => {
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDUwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyNzI1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM3YTc1NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L2RldHh0Pjwvc3ZnPg==';
       });
-      
+
       const tagsContainer = card.querySelector(`#tags-${index}`);
       item.tags.forEach(tagText => {
         const tag = document.createElement('span');
@@ -477,20 +532,20 @@ class PS2Portfolio {
         });
         tagsContainer.appendChild(tag);
       });
-      
+
       card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('tag')) return; 
+        if (e.target.classList.contains('tag')) return;
         this.soundManager.playSelect();
         this.particleSystem.createBurst({ x: e.clientX, y: e.clientY }, 0xc5a880);
         this.showPortfolioDetail(item);
       });
-      
+
       container.appendChild(card);
     });
-    
+
     console.log('✅ ポートフォリオグリッドレンダリング完了');
   }
-  
+
   showPortfolioDetail(item) {
     const overlay = document.getElementById('game-desc-overlay');
     const title = document.getElementById('game-title');
@@ -499,17 +554,17 @@ class PS2Portfolio {
     const playtime = document.getElementById('game-playtime');
     const devtime = document.getElementById('game-devtime');
     const tools = document.getElementById('game-tools');
-    
+
     title.textContent = item.title;
     description.textContent = item.description;
     genre.textContent = item.tags.join(', ');
     playtime.textContent = '-';
     devtime.textContent = item.date;
     tools.textContent = item.blenderVersion;
-    
+
     gsap.set('.description-window', { opacity: 1, x: 0 });
     overlay.classList.add('visible');
-    
+
     gsap.from('.description-window', {
       x: 150,
       opacity: 0,
@@ -518,7 +573,7 @@ class PS2Portfolio {
       delay: 0.1
     });
   }
-  
+
   showError(title, message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-notification';
@@ -531,23 +586,23 @@ class PS2Portfolio {
     this.soundManager.playError();
     setTimeout(() => errorDiv.remove(), 5000);
   }
-  
+
   getModelUrl(filename) {
     if (CONFIG.USE_ABSOLUTE_PATH) {
       return `${window.location.origin}${CONFIG.MODELS_PATH}${filename}`;
     }
     return `${CONFIG.MODELS_PATH}${filename}`;
   }
-  
+
   prepareGameData() {
     const stage = document.getElementById('loading-stage');
     const status = document.getElementById('loading-status');
     if (stage) stage.textContent = 'Checking system...';
     if (status) status.textContent = 'Preparing game data...';
-    
+
     const DEFAULT_GAME_DATA = [
       {
-        id: '準備中',
+        id: '未制作',
         file: 'package_01.glb',
         name: 'xxx',
         description: 'xxx',
@@ -557,7 +612,7 @@ class PS2Portfolio {
         tools: 'Unreal Engine 5.7'
       },
       {
-        id: '準備中',
+        id: '未制作',
         file: 'package_02.glb',
         name: 'xxx',
         description: 'xxx',
@@ -567,7 +622,7 @@ class PS2Portfolio {
         tools: 'Unreal Engine 5.7'
       },
       {
-        id: '準備中',
+        id: '未制作',
         file: 'package_03.glb',
         name: 'xxx',
         description: '3xxx',
@@ -577,7 +632,7 @@ class PS2Portfolio {
         tools: 'Unreal Engine 5.7'
       },
       {
-        id: '準備中',
+        id: '未制作',
         file: 'package_04.glb',
         name: 'xxx',
         description: 'xxx',
@@ -589,68 +644,57 @@ class PS2Portfolio {
       {
         id: '制作中',
         file: 'package_05.glb',
-        name: 'xxx',
-        description: 'xxx',
+        name: '山奥ダム',
+        description: '2045年、山奥のダム。 人口減少により麓の村は廃村と化し、管理員である主人公は完全な孤独の中にいた。 助けを呼んでも、誰も来ない。ここを訪れるのは野生のクマと、巣を張る蜘蛛だけのはずだった。 ――あの出来事までは。',
         genre: 'ホラー',
-        playtime: '3-4時間',
-        devtime: '6ヶ月想定',
-        tools: 'Unreal Engine 5.7,Blender'
+        playtime: '5時間程度で完結する規模感',
+        devtime: '2026年5月から開発予定',
+        tools: 'Unreal Engine 5.7'
       }
     ];
-    
+
     this.models = DEFAULT_GAME_DATA.map(game => ({
       ...game,
       url: this.getModelUrl(game.file)
     }));
-    
+
     this.resourcesToLoad = this.models.length + 4;
     this.resourcesLoaded = 0;
-    
+
     if (CONFIG.DEBUG_MODE) {
       console.log('📋 ゲームデータ準備完了:');
       console.table(this.models);
     }
   }
-  
+
   setupLoading() {
     console.log('⏳ ローディング画面セットアップ');
     const loadingBar = document.querySelector('.loading-bar');
     const stage = document.getElementById('loading-stage');
-    
-    setTimeout(() => {
-      this.soundManager.playBootSound();
-    }, 500);
-    
+
     this.completeLoading = () => {
-      if (this.isLoadingComplete) return;
-      this.isLoadingComplete = true;
-      
       if (loadingBar) loadingBar.style.width = '100%';
-      if (stage) stage.textContent = 'Load complete. Starting system...';
+      if (stage) stage.textContent = 'Load complete.'; // メッセージを簡略化
       const loadingStatus = document.getElementById('loading-status');
       if (loadingStatus) loadingStatus.textContent = 'All resources loaded successfully';
-      
+
       console.log('🎉 すべてのリソース読み込み完了');
-      
-      setTimeout(() => {
-        document.getElementById('loading-screen')?.classList.add('hidden');
-        this.startVHSNoiseAnimation();
-      }, 1200);
+      this.isLoadingComplete = true;
     };
   }
-  
+
   resourceLoaded(resourceName) {
     if (this.isLoadingComplete) return;
     this.resourcesLoaded++;
     const progress = (this.resourcesLoaded / Math.max(1, this.resourcesToLoad)) * 100;
-    
+
     const loadingBar = document.querySelector('.loading-bar');
     const loadingStatus = document.getElementById('loading-status');
     const stage = document.getElementById('loading-stage');
-    
+
     if (loadingBar) loadingBar.style.width = `${progress}%`;
     if (loadingStatus) loadingStatus.textContent = `[${this.resourcesLoaded}/${this.resourcesToLoad}] ${resourceName}`;
-    
+
     if (stage) {
       const stages = [
         'Initializing...',
@@ -661,14 +705,14 @@ class PS2Portfolio {
         'Loading cat model...',
         'Finalizing setup...'
       ];
-      const stageIndex = Math.floor((this.resourcesLoaded / this.resourcesToLoad) * (stages.length - 1));
+      const stageIndex = Math.min(stages.length - 1, Math.floor((this.resourcesLoaded / this.resourcesToLoad) * (stages.length)));
       stage.textContent = stages[stageIndex];
     }
-    
+
     console.log(`   ├ [${this.resourcesLoaded}/${this.resourcesToLoad}] ${resourceName}`);
     if (this.resourcesLoaded >= this.resourcesToLoad) this.completeLoading();
   }
-  
+
   setupNavigation() {
     console.log('🧭 ナビゲーションセットアップ');
     const tabs = document.querySelectorAll('.nav-tab');
@@ -676,21 +720,21 @@ class PS2Portfolio {
       tab.addEventListener('click', (e) => {
         e.preventDefault();
         if (tab.classList.contains('active-tab') || this.sectionTransitioning) return;
-        
+
         this.soundManager.playClick();
         this.showSectionTransition();
-        
+
         tabs.forEach(t => {
           t.classList.remove('active-tab');
           t.setAttribute('aria-current', 'false');
         });
         tab.classList.add('active-tab');
         tab.setAttribute('aria-current', 'page');
-        
+
         document.querySelectorAll('.content-section').forEach(section => {
           section.classList.remove('active');
         });
-        
+
         const targetId = tab.dataset.target;
         const targetSection = document.getElementById(targetId);
         if (targetSection) {
@@ -700,21 +744,21 @@ class PS2Portfolio {
             this.renderCurrentSection();
           }, 300);
         }
-        
+
         if (targetId === 'game-dev' && !this.gameSceneInitialized) {
           console.log('🎮 game-devタブが選択されました。3Dシーンを初期化します。');
           this.initGameScene();
           this.gameSceneInitialized = true;
         }
-        
+
         this.updateKeyboardIndicator(targetId);
       });
     });
-    
+
     const closeBtn = document.querySelector('.window-btn.close');
     const minimizeBtn = document.querySelector('.window-btn.minimize');
     const maximizeBtn = document.querySelector('.window-btn.maximize');
-    
+
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         this.soundManager.playError();
@@ -723,7 +767,7 @@ class PS2Portfolio {
         }
       });
     }
-    
+
     if (minimizeBtn) {
       minimizeBtn.addEventListener('click', () => {
         this.soundManager.playClick();
@@ -731,7 +775,7 @@ class PS2Portfolio {
         setTimeout(() => this.hideMemoryCardAccess(), 1500);
       });
     }
-    
+
     if (maximizeBtn) {
       maximizeBtn.addEventListener('click', () => {
         this.soundManager.playClick();
@@ -740,7 +784,7 @@ class PS2Portfolio {
       });
     }
   }
-  
+
   setupSectionTransition() {
     const indicator = document.getElementById('section-transition');
     if (indicator) {
@@ -749,7 +793,7 @@ class PS2Portfolio {
       });
     }
   }
-  
+
   showSectionTransition() {
     this.sectionTransitioning = true;
     const indicator = document.getElementById('section-transition');
@@ -757,7 +801,7 @@ class PS2Portfolio {
       indicator.classList.add('active');
     }
   }
-  
+
   hideSectionTransition() {
     setTimeout(() => {
       const indicator = document.getElementById('section-transition');
@@ -766,7 +810,7 @@ class PS2Portfolio {
       }
     }, 200);
   }
-  
+
   updateKeyboardIndicator(section) {
     const indicator = document.getElementById('keyboard-indicator');
     if (section === 'game-dev') {
@@ -775,7 +819,7 @@ class PS2Portfolio {
       indicator.classList.remove('visible');
     }
   }
-  
+
   setupEffects() {
     console.log('✨ エフェクトセットアップ');
     this.vhsNoiseElement = document.querySelector('.vhs-noise');
@@ -788,33 +832,27 @@ class PS2Portfolio {
       this.vhsNoiseElement.style.opacity = `${0.03 + variation}`;
     }, 250);
   }
-  
+
   setupSystemInfo() {
     console.log('💻 システム情報セットアップ');
     const timeElement = document.getElementById('system-time');
-    const fpsElement = document.getElementById('system-fps');
+    // FPSはanimate()で更新するため、ここではDOM要素の取得のみ。
     const memElement = document.getElementById('system-mem');
-    
+
     setInterval(() => {
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ja-JP', { hour12: false });
       if (timeElement) timeElement.textContent = timeStr;
     }, 1000);
-    
+
     setInterval(() => {
       if (memElement) {
         const memUsage = Math.floor(Math.random() * 30 + 70);
         memElement.textContent = `${memUsage}%`;
       }
     }, 3000);
-    
-    setInterval(() => {
-      if (fpsElement) {
-        fpsElement.textContent = `${this.fps}`;
-      }
-    }, 1000);
   }
-  
+
   showMemoryCardAccess(message) {
     const status = document.getElementById('loading-status');
     if (status && this.isLoadingComplete) {
@@ -822,50 +860,62 @@ class PS2Portfolio {
       status.style.display = 'block';
     }
   }
-  
+
   hideMemoryCardAccess() {
     const status = document.getElementById('loading-status');
     if (status && this.isLoadingComplete) {
       status.style.display = 'none';
     }
   }
-  
+
   setupAccessibility() {
     console.log('♿ アクセシビリティセットアップ');
     const closeButton = document.getElementById('close-description');
-    const gameDescOverlay = document.getElementById('game-desc-overlay');
-    
-    const closeOverlay = () => this.deselectGame();
-    closeButton?.addEventListener('click', closeOverlay);
-    
+
+    // 制作記録（2D）とゲーム選択（3D）の閉じる処理を統合
+    const handleClose = () => {
+      this.soundManager.playClick();
+      if (this.selectedObject) {
+        this.deselectGame();
+      }
+      // 3Dオブジェクトが選択されていなくても、説明ウィンドウが開いていれば閉じる
+      else {
+        this.hideDescription();
+      }
+    };
+
+    closeButton?.addEventListener('click', handleClose);
+
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.selectedObject) this.deselectGame();
-      
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+
       if (!this.isAnimating && !this.selectedObject && this.gamePackages.length > 0) {
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
           this.currentKeyboardIndex = (this.currentKeyboardIndex - 1 + this.gamePackages.length) % this.gamePackages.length;
-          this.selectGameByIndex(this.currentKeyboardIndex, false); 
+          this.selectGameByIndex(this.currentKeyboardIndex, false);
           this.showKeyboardPress('←');
         } else if (e.key === 'ArrowRight') {
           e.preventDefault();
           this.currentKeyboardIndex = (this.currentKeyboardIndex + 1) % this.gamePackages.length;
-          this.selectGameByIndex(this.currentKeyboardIndex, false); 
+          this.selectGameByIndex(this.currentKeyboardIndex, false);
           this.showKeyboardPress('→');
         } else if (e.key === 'Enter') {
-            e.preventDefault();
-            this.selectGameByIndex(this.currentKeyboardIndex, true); 
+          e.preventDefault();
+          this.selectGameByIndex(this.currentKeyboardIndex, true);
         }
       }
     });
-    
+
     const canvasContainer = document.getElementById('three-canvas-container');
     if (canvasContainer) {
       canvasContainer.setAttribute('role', 'img');
       canvasContainer.setAttribute('aria-label', '3D卓上ビュー: パッケージをクリックしてください');
     }
   }
-  
+
   showKeyboardPress(key) {
     const indicator = document.querySelector(`.indicator-item[data-key="${key}"]`);
     if (indicator) {
@@ -873,45 +923,45 @@ class PS2Portfolio {
       setTimeout(() => indicator.classList.remove('pressed'), 200);
     }
   }
-  
+
   selectGameByIndex(index, doZoom) {
     const pkg = this.gamePackages[index];
     if (!pkg) return;
-    
+
     this.soundManager.playClick();
-    
+
     this.gamePackages.forEach(p => {
-        if (p !== pkg) {
-            gsap.to(p.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-            p.userData.hoverIntensity = 0;
-            p.traverse(node => {
-                if (node.isMesh && node.material.emissive) {
-                    gsap.to(node.material, { emissiveIntensity: 0.0, duration: 0.3 });
-                }
-            });
-        }
+      if (p !== pkg) {
+        gsap.to(p.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+        p.userData.hoverIntensity = 0;
+        p.traverse(node => {
+          if (node.isMesh && node.material.emissive) {
+            gsap.to(node.material, { emissiveIntensity: 0.0, duration: 0.3 });
+          }
+        });
+      }
     });
-    
+
     gsap.to(pkg.scale, { x: 1.15, y: 1.15, z: 1.15, duration: 0.3 });
     pkg.userData.hoverIntensity = 1;
     pkg.traverse(node => {
-        if (node.isMesh && node.material.emissive) {
-            gsap.to(node.material, { emissiveIntensity: 0.3, duration: 0.3 });
-        }
+      if (node.isMesh && node.material.emissive) {
+        gsap.to(node.material, { emissiveIntensity: 0.3, duration: 0.3 });
+      }
     });
     this.hoveredObject = pkg;
 
     if (doZoom) {
-        this.selectGame(pkg);
+      this.selectGame(pkg);
     }
   }
-  
+
   setupFPSCounter() {
     console.log('📊 FPSカウンターセットアップ');
     const fpsCounter = document.getElementById('fps-counter');
     if (fpsCounter && CONFIG.DEBUG_MODE) fpsCounter.classList.add('visible');
   }
-  
+
   setupDebugTools() {
     console.log('🛠️ デバッグツールセットアップ');
     document.addEventListener('keydown', (e) => {
@@ -930,7 +980,7 @@ class PS2Portfolio {
       }
     });
   }
-  
+
   initGLTFLoader() {
     if (!window.THREE) {
       console.error('❌ Three.jsが読み込まれていません！');
@@ -944,7 +994,7 @@ class PS2Portfolio {
     console.log('✅ GLTFLoader初期化完了');
     return true;
   }
-  
+
   async loadModel(url, name = '') {
     return new Promise((resolve) => {
       if (!this.gltfLoader) {
@@ -955,44 +1005,52 @@ class PS2Portfolio {
           return;
         }
       }
-      
+
       if (!url || url === 'null' || url === 'undefined') {
         this.resourceLoaded(`✗ ${name} (URL無)`);
         resolve({ model: this.createDebugPackage(name, 'url-error'), isFallback: true });
         return;
       }
-      
+
       if (CONFIG.DEBUG_MODE) console.log(`📥 ロード開始: ${name}`);
-      
+
       const loadTimeout = setTimeout(() => {
         console.warn(`⏱️ タイムアウト: ${name}`);
         this.resourceLoaded(`✗ ${name} (タイムアウト)`);
         resolve({ model: this.createDebugPackage(name, 'timeout'), isFallback: true });
       }, 20000);
-      
+
       this.gltfLoader.load(
         url,
         (gltf) => {
           clearTimeout(loadTimeout);
           console.log(`✅ ロード成功: ${name}`);
-          
-          let animShapeKeyIndex = -1;
-          
+
+          // アニメーションクリップを検出
+          let packageOpenClip = null;
+          let packageCloseClip = null;
+
+          if (gltf.animations && gltf.animations.length > 0) {
+            console.log(`   └ 🎬 検出されたアニメーション: ${gltf.animations.map(a => `'${a.name}'`).join(', ')}`);
+
+            packageOpenClip = gltf.animations.find(clip => clip.name === 'package_open');
+            packageCloseClip = gltf.animations.find(clip => clip.name === 'package_close');
+
+            if (packageOpenClip) console.log(`   └ ✅ 'package_open' アニメーション発見`);
+            if (packageCloseClip) console.log(`   └ ✅ 'package_close' アニメーション発見`);
+          }
+
           gltf.scene.traverse(node => {
             this.setupPS2Material(node);
-            
-            // ★★★ パッケージモデル用: "Open"シェイプキーを検出 ★★★
-            if (node.isMesh && node.morphTargetDictionary && node.morphTargetDictionary['Open'] !== undefined) {
-                console.log(`   └ 🔑 シェイプキー "Open" を発見: ${name}`);
-                animShapeKeyIndex = node.morphTargetDictionary['Open'];
-                if (node.morphTargetInfluences) {
-                    node.morphTargetInfluences.fill(0);
-                }
-            }
           });
-          
-          gltf.scene.userData.animShapeKeyIndex = animShapeKeyIndex;
-          
+
+          // アニメーション情報をuserDataに保存
+          gltf.scene.userData.animations = {
+            openClip: packageOpenClip,
+            closeClip: packageCloseClip,
+            mixer: null  // 後で設定
+          };
+
           this.resourceLoaded(`✓ ${name}`);
           resolve({ model: gltf.scene, isFallback: false });
         },
@@ -1013,7 +1071,7 @@ class PS2Portfolio {
       );
     });
   }
-  
+
   createDebugPackage(name = '', errorType = '') {
     const geo = new THREE.BoxGeometry(0.8, 1.2, 0.2);
     const colors = {
@@ -1023,7 +1081,7 @@ class PS2Portfolio {
       'loader-error': 0xFF44FF,
       'default': 0x444444
     };
-    const mat = new THREE.MeshLambertMaterial({ 
+    const mat = new THREE.MeshLambertMaterial({
       color: colors[errorType] || colors.default,
       emissive: colors[errorType] || 0x222222,
       emissiveIntensity: 0.2
@@ -1034,10 +1092,7 @@ class PS2Portfolio {
     pkg.name = `${name}_${errorType}`;
     return pkg;
   }
-  
-  // =============================================================================
-  // ★★★ 修正1: SkinnedMesh対応のマテリアルセットアップ ★★★
-  // =============================================================================
+
   setupPS2Material(node) {
     if (!node.isMesh || !node.material) return;
     const originalMat = node.material;
@@ -1047,13 +1102,12 @@ class PS2Portfolio {
       transparent: originalMat.transparent || false,
       opacity: originalMat.opacity || 1.0,
       side: originalMat.side || THREE.FrontSide,
-      // ★★★ 重要: SkinnedMeshの場合はskinningを有効化 ★★★
       skinning: node.isSkinnedMesh === true
     });
     node.material = ps2Mat;
     node.castShadow = true;
     node.receiveShadow = true;
-    
+
     if (this.isMobile && node.geometry && THREE.BufferGeometryUtils) {
       try {
         node.geometry = THREE.BufferGeometryUtils.mergeVertices(node.geometry);
@@ -1063,7 +1117,7 @@ class PS2Portfolio {
       }
     }
   }
-  
+
   async initGameScene() {
     const container = document.getElementById('three-canvas-container');
     if (!container) {
@@ -1073,100 +1127,104 @@ class PS2Portfolio {
 
     try {
       console.log('🎬 3Dシーン初期化開始');
-      
-      this.renderer = new THREE.WebGLRenderer({ 
-        antialias: false, 
+
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: false,
         powerPreference: 'high-performance',
         alpha: false
       });
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.PERFORMANCE.pixelRatio)); 
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.PERFORMANCE.pixelRatio));
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(this.renderer.domElement);
       console.log('   ├ レンダラー初期化完了');
-      
+
       this.scene = new THREE.Scene();
       console.log('   ├ シーン作成完了');
-      
+
       const isMobileView = (window.innerWidth <= 1024);
       this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
       const width = Math.max(1, window.innerWidth - this.sideNavWidth);
       const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
-      
-      const fov = isMobileView ? 65 : 50; 
-      
-      this.camera = new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000); 
-      
+
+      const fov = isMobileView ? 65 : 50;
+
+      this.camera = new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000);
+
       this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
       this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
-          
-      this.camera.position.copy(this.activeCameraPos); 
-      this.camera.lookAt(this.activeLookAt); 
-      
+
+      this.camera.position.copy(this.activeCameraPos);
+      this.camera.lookAt(this.activeLookAt);
+
       this.originalCameraRotation.copy(this.camera.rotation);
       this.cameraShakeOffset = new THREE.Vector3();
-      
+
+      this.mouseLight = new THREE.PointLight(0xffaa00, 0, 10);
+      this.mouseLight.position.set(0, 0, 3);
+      this.scene.add(this.mouseLight);
+
       console.log('   ├ カメラ設定完了');
-      
+
       this.initGLTFLoader();
       await this.loadHDRI();
       await this.loadScene();
-      await this.loadLights(); 
-      this.setupLighting(); 
+      await this.loadLights();
+      this.setupLighting();
       this.setupPostProcessing();
       console.log('   ├ ポストプロセス設定完了');
-      
+
       await this.loadAndArrangePackages();
       this.setupInteraction();
       console.log('   ├ インタラクション設定完了');
-      
+
       window.addEventListener('resize', () => this.onWindowResize());
       this.animate();
-      
+
       console.log('🎉 3Dシーン完全初期化完了');
-      
+
     } catch (error) {
       console.error('💥 致命的エラー:', error);
       this.showError('3Dシーン初期化失敗', error.message);
     }
   }
-  
+
   setupPostProcessing() {
     if (!CONFIG.POST_PROCESSING) {
       console.warn('⚠️ ポストプロセス設定無効');
       return;
     }
-    
+
     this.composer = new THREE.EffectComposer(this.renderer);
-    
+
     const renderPass = new THREE.RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
-    
+
     if (CONFIG.POST_PROCESSING.vignetteEnabled) {
       this.vignettePass = this.createVignettePass();
       this.composer.addPass(this.vignettePass);
     }
-    
+
     if (CONFIG.POST_PROCESSING.noiseEnabled) {
       this.ps2NoisePass = this.createPS2NoisePass();
       this.composer.addPass(this.ps2NoisePass);
     }
-    
+
     if (CONFIG.POST_PROCESSING.chromaticAberration) {
       this.chromaticPass = this.createChromaticAberrationPass();
       this.composer.addPass(this.chromaticPass);
     }
-    
+
     if (CONFIG.POST_PROCESSING.fogEnabled) {
-      this.scene.fog = new THREE.Fog(0x222222, 5, 25); 
+      this.scene.fog = new THREE.Fog(0x222222, 5, 25);
       console.log('   └ 深度フォグ有効');
     }
-    
+
     if (CONFIG.POST_PROCESSING.pixelateEnabled) {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     }
   }
-  
+
   createChromaticAberrationPass() {
     const chromaticShader = {
       uniforms: {
@@ -1195,7 +1253,7 @@ class PS2Portfolio {
     };
     return new THREE.ShaderPass(chromaticShader);
   }
-  
+
   createVignettePass() {
     const vignetteShader = {
       uniforms: {
@@ -1226,7 +1284,7 @@ class PS2Portfolio {
     };
     return new THREE.ShaderPass(vignetteShader);
   }
-  
+
   createPS2NoisePass() {
     const ps2NoiseShader = {
       uniforms: {
@@ -1260,7 +1318,7 @@ class PS2Portfolio {
     };
     return new THREE.ShaderPass(ps2NoiseShader);
   }
-  
+
   setupInteraction() {
     const canvas = this.renderer.domElement;
     canvas.style.cursor = 'pointer';
@@ -1268,69 +1326,59 @@ class PS2Portfolio {
     canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
     console.log('   └ マウスイベントリスナー設定完了');
   }
-  
+
   onMouseMove(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    document.body.style.cursor = 'pointer';
-    
-    const tooltip = document.getElementById('package-tooltip');
-    if (!tooltip || this.isAnimating || this.selectedObject) {
-      tooltip?.classList.remove('visible');
-      return;
+
+    // マウスライトの目標強度を設定する (減衰アニメーションはanimate()で実行)
+    this.targetMouseLightIntensity = (Math.abs(this.mouse.x) < 1.2 && Math.abs(this.mouse.y) < 1.2) ? 2.0 : 0;
+
+    // マウスライトの位置更新
+    if (this.mouseLight && this.camera) {
+      const vector = new THREE.Vector3(this.mouse.x, this.mouse.y, 0.5);
+      vector.unproject(this.camera);
+
+      const dir = vector.sub(this.camera.position).normalize();
+      const distance = -this.camera.position.z / dir.z + 2.0;
+      const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+
+      this.mouseLight.position.set(pos.x, pos.y + 1.0, 3.0);
     }
-    
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.gamePackages, true);
-    
-    if (intersects.length > 0) {
-      let obj = intersects[0].object;
-      while (obj.parent && !this.gamePackages.includes(obj)) {
-        obj = obj.parent;
-      }
-      if (this.gamePackages.includes(obj)) {
-        tooltip.querySelector('.tooltip-title').textContent = obj.userData.name;
-        tooltip.querySelector('.tooltip-genre').textContent = obj.userData.genre;
-        tooltip.style.left = `${event.clientX + 15}px`;
-        tooltip.style.top = `${event.clientY - 30}px`;
-        tooltip.classList.add('visible');
-      }
-    } else {
-      tooltip.classList.remove('visible');
-    }
+
+    // カーソル制御
+    document.body.style.cursor = (this.hoveredObject || this.isAnimating || this.selectedObject) ? 'pointer' : 'default';
   }
-  
+
   onClick(event) {
     if (this.isAnimating) {
-      console.log('⏳ アニメーション中のためクリックを無効化');
       return;
     }
-    
+
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.gamePackages, true);
-    
+
     if (intersects.length > 0) {
       let clickedObject = intersects[0].object;
       while (clickedObject.parent && !this.gamePackages.includes(clickedObject)) {
         clickedObject = clickedObject.parent;
       }
-      
+
       if (this.gamePackages.includes(clickedObject)) {
         this.currentKeyboardIndex = this.gamePackages.indexOf(clickedObject);
         this.soundManager.playSelect();
-        
+
         const screenPos = {
           x: event.clientX,
           y: event.clientY
         };
         this.particleSystem.createBurst(screenPos, 0xc5a880);
-        
+
         if (this.selectedObject === clickedObject) {
           this.deselectGame();
         } else {
@@ -1348,55 +1396,41 @@ class PS2Portfolio {
       }
     }
   }
-  
+
   selectGame(gameObject) {
     this.isAnimating = true;
     this.selectedObject = gameObject;
-    
+
     console.log(`🎯 ゲーム選択開始: ${gameObject.userData.name}`);
-    
+
     if (CONFIG.CAMERA_SHAKE.enabled) {
       CONFIG.CAMERA_SHAKE.trauma = 0.8;
     }
-    
-    // ★★★ パッケージモデル用: "Open"シェイプキー再生 ★★★
-    const shapeKeyIndex = gameObject.userData.animShapeKeyIndex;
-    if (shapeKeyIndex !== -1) {
-        console.log(`   └ 🔑 シェイプキー "Open" (Index: ${shapeKeyIndex}) を再生`);
-        gameObject.traverse(node => {
-            if (node.isMesh && node.morphTargetInfluences) {
-                const proxy = { value: node.morphTargetInfluences[shapeKeyIndex] };
-                gsap.to(proxy, {
-                    value: 1.0,
-                    duration: 0.8,
-                    ease: "power2.inOut",
-                    onUpdate: () => {
-                        node.morphTargetInfluences[shapeKeyIndex] = proxy.value;
-                    }
-                });
-            }
-        });
+
+    // アニメーション再生
+    const animations = gameObject.userData.animations;
+    if (animations && animations.mixer && animations.openClip) {
+      console.log(`   └ 🎬 'package_open' アニメーション再生`);
+
+      // 既存のアクションを停止
+      animations.mixer.stopAllAction();
+
+      // openアニメーションを再生（ループなし）
+      const action = animations.mixer.clipAction(animations.openClip);
+      action.setLoop(THREE.LoopOnce);
+      action.clampWhenFinished = true;  // 最後のフレームで停止
+      action.reset();
+      action.play();
+    } else if (!animations || !animations.openClip) {
+      console.warn(`   └ ⚠️ package_openアニメーションが見つかりません`);
     }
-    
-    gsap.timeline({
-        onComplete: () => {
-            this.showDescription(gameObject.userData);
-            this.isAnimating = false;
-        }
-    })
-      .to(gameObject.position, {
-        y: 0.5,
-        duration: 0.8,
-        ease: "power2.out"
-      }, 0)
-      .to(gameObject.scale, {
-        x: 1.5,
-        y: 1.5,
-        z: 1.5,
-        duration: 0.8,
-        ease: "back.out(1.7)"
-      }, 0);
-    
+
+    // 説明ウィンドウを表示（拡大・移動アニメーションなし）
+    setTimeout(() => {
+      this.showDescription(gameObject.userData);
+      this.isAnimating = false;
+    }, 100);
+
     this.gamePackages.forEach(pkg => {
       if (pkg !== gameObject) {
         gsap.to(pkg.scale, { x: 0.7, y: 0.7, z: 0.7, duration: 0.6 });
@@ -1408,75 +1442,61 @@ class PS2Portfolio {
       }
     });
   }
-  
+
   deselectGame() {
     if (!this.selectedObject || this.isAnimating) {
-      console.log('⚠️ 選択解除スキップ:', { hasObject: !!this.selectedObject, isAnimating: this.isAnimating });
       return;
     }
-    
+
     this.isAnimating = true;
     console.log('✖️ ゲーム選択解除開始');
-    
+
     if (CONFIG.CAMERA_SHAKE.enabled) {
       CONFIG.CAMERA_SHAKE.trauma = 0.5;
     }
-    
+
     const gameObject = this.selectedObject;
-    
-    // ★★★ パッケージモデル用: "Open"シェイプキー解除 ★★★
-    const shapeKeyIndex = gameObject.userData.animShapeKeyIndex;
-    if (shapeKeyIndex !== -1) {
-        console.log(`   └ 🔑 シェイプキー "Open" (Index: ${shapeKeyIndex}) をリセット`);
-        gameObject.traverse(node => {
-            if (node.isMesh && node.morphTargetInfluences) {
-                const proxy = { value: node.morphTargetInfluences[shapeKeyIndex] };
-                gsap.to(proxy, {
-                    value: 0.0,
-                    duration: 0.8,
-                    ease: "power2.inOut",
-                    onUpdate: () => {
-                        node.morphTargetInfluences[shapeKeyIndex] = proxy.value;
-                    }
-                });
-            }
-        });
+
+    // アニメーション再生
+    const animations = gameObject.userData.animations;
+    if (animations && animations.mixer && animations.closeClip) {
+      console.log(`   └ 🎬 'package_close' アニメーション再生`);
+
+      // 既存のアクションを停止
+      animations.mixer.stopAllAction();
+
+      // closeアニメーションを再生（ループなし）
+      const action = animations.mixer.clipAction(animations.closeClip);
+      action.setLoop(THREE.LoopOnce);
+      action.clampWhenFinished = true;
+      action.reset();
+      action.play();
+    } else if (!animations || !animations.closeClip) {
+      console.warn(`   └ ⚠️ package_closeアニメーションが見つかりません`);
     }
-    
-    gsap.timeline({
-        onComplete: () => {
-            this.selectedObject = null;
-            this.isAnimating = false;
-            console.log('✅ 選択解除完了');
-        }
-    })
-      .to(gameObject.position, {
-        y: gameObject.userData.originalPosition.y,
-        duration: 0.8,
-        ease: "power2.inOut"
-      }, 0)
-      .to(gameObject.scale, {
-        x: 1.0, y: 1.0, z: 1.0,
-        duration: 0.8,
-        ease: "back.out(1.7)"
-      }, 0);
-    
+
+    // 説明ウィンドウを非表示（拡大・移動アニメーションなし）
+    this.selectedObject = null;
+    setTimeout(() => {
+      this.isAnimating = false;
+      console.log('✅ 選択解除完了');
+    }, 100);
+
+    // 他のパッケージの透明度を元に戻す
     this.gamePackages.forEach(pkg => {
-      gsap.to(pkg.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.6 });
-      gsap.to(pkg.position, { y: 0.1, duration: 0.6 });
       pkg.traverse(node => {
         if (node.isMesh) {
           gsap.to(node.material, { opacity: 1.0, duration: 0.6 });
         }
       });
     });
-    
+
     this.hideDescription();
   }
-  
+
   showDescription(gameData) {
     console.log('💬 説明ウィンドウ表示:', gameData.name);
-    
+
     const overlay = document.getElementById('game-desc-overlay');
     const title = document.getElementById('game-title');
     const description = document.getElementById('game-description');
@@ -1484,17 +1504,17 @@ class PS2Portfolio {
     const playtime = document.getElementById('game-playtime');
     const devtime = document.getElementById('game-devtime');
     const tools = document.getElementById('game-tools');
-    
+
     title.textContent = gameData.name;
     description.textContent = gameData.description;
     genre.textContent = gameData.genre;
     playtime.textContent = gameData.playtime;
     devtime.textContent = gameData.devtime;
     tools.textContent = gameData.tools;
-    
+
     gsap.set('.description-window', { opacity: 1, x: 0 });
     overlay.classList.add('visible');
-    
+
     gsap.from('.description-window', {
       x: 150,
       opacity: 0,
@@ -1503,10 +1523,10 @@ class PS2Portfolio {
       delay: 0.1
     });
   }
-  
+
   hideDescription() {
     console.log('💬 説明ウィンドウ非表示');
-    
+
     const overlay = document.getElementById('game-desc-overlay');
     gsap.to('.description-window', {
       x: 150,
@@ -1519,23 +1539,35 @@ class PS2Portfolio {
       }
     });
   }
-  
+
   async loadHDRI() {
     try {
       console.log('   ├ HDRI読み込み開始');
       const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
       pmremGenerator.compileEquirectangularShader();
-      
-      const exrLoader = new THREE.EXRLoader();
-      const exrTexture = await exrLoader.loadAsync(CONFIG.HDRI_PATH);
-      const envMap = pmremGenerator.fromEquirectangular(exrTexture).texture;
-      
+
+      let envMap;
+
+      if (CONFIG.HDRI_PATH.toLowerCase().endsWith('.exr')) {
+        const exrLoader = new THREE.EXRLoader();
+        const exrTexture = await exrLoader.loadAsync(CONFIG.HDRI_PATH);
+        envMap = pmremGenerator.fromEquirectangular(exrTexture).texture;
+        exrTexture.dispose();
+      } else {
+        const textureLoader = new THREE.TextureLoader();
+        const texture = await new Promise((resolve, reject) => {
+          textureLoader.load(CONFIG.HDRI_PATH, resolve, undefined, reject);
+        });
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        envMap = pmremGenerator.fromEquirectangular(texture).texture;
+        texture.dispose();
+      }
+
       this.scene.environment = envMap;
       this.scene.background = envMap;
-      
-      exrTexture.dispose();
+
       pmremGenerator.dispose();
-      
+
       this.resourceLoaded('HDRI環境マップ');
       console.log('   └ HDRI読み込み成功');
     } catch (error) {
@@ -1544,17 +1576,17 @@ class PS2Portfolio {
       this.resourceLoaded('HDRI(フォールバック)');
     }
   }
-  
+
   async loadScene() {
     try {
       console.log('   ├ Scene.glb 読み込み開始');
       if (!this.gltfLoader) this.initGLTFLoader();
-      
+
       const gltf = await this.gltfLoader.loadAsync(CONFIG.SCENE_PATH);
       this.sceneModel = gltf.scene;
       this.scene.add(this.sceneModel);
       this.sceneModel.traverse(node => this.setupPS2Material(node));
-      
+
       this.resourceLoaded('Scene.glb (机)');
       console.log('   └ Scene.glb 読み込み成功');
     } catch (error) {
@@ -1563,35 +1595,35 @@ class PS2Portfolio {
       this.resourceLoaded('Scene(フォールバック)');
     }
   }
-  
+
   async loadLights() {
     console.log('💡 light.glbの読み込み開始');
     try {
-        if (!this.gltfLoader) this.initGLTFLoader();
-        
-        const gltf = await this.gltfLoader.loadAsync(CONFIG.LIGHT_PATH || 'light.glb');
-        this.scene.add(gltf.scene);
-        
-        gltf.scene.traverse((object) => {
-            if (object.isLight) {
-                console.log(`   └💡 light.glb からライトを発見: ${object.type}`);
-                
-                object.castShadow = true;
-                
-                object.shadow.mapSize.width = 1024;
-                object.shadow.mapSize.height = 1024;
-                object.shadow.bias = -0.001;
-            }
-        });
-        
-        this.resourceLoaded('light.glb (ライト)');
-        console.log('   └ light.glb読み込み成功');
+      if (!this.gltfLoader) this.initGLTFLoader();
+
+      const gltf = await this.gltfLoader.loadAsync(CONFIG.LIGHT_PATH || 'light.glb');
+      this.scene.add(gltf.scene);
+
+      gltf.scene.traverse((object) => {
+        if (object.isLight) {
+          console.log(`   └💡 light.glb からライトを発見: ${object.type}`);
+
+          object.castShadow = true;
+
+          object.shadow.mapSize.width = 1024;
+          object.shadow.mapSize.height = 1024;
+          object.shadow.bias = -0.001;
+        }
+      });
+
+      this.resourceLoaded('light.glb (ライト)');
+      console.log('   └ light.glb読み込み成功');
     } catch (error) {
-        console.warn('   └ light.glb読み込み失敗:', error);
-        this.resourceLoaded('light.glb (フォールバック)');
+      console.warn('   └ light.glb読み込み失敗:', error);
+      this.resourceLoaded('light.glb (フォールバック)');
     }
   }
-  
+
   createFallbackScene() {
     const desk = new THREE.Mesh(
       new THREE.BoxGeometry(10, 0.2, 6),
@@ -1601,45 +1633,39 @@ class PS2Portfolio {
     desk.receiveShadow = true;
     this.scene.add(desk);
   }
-  
+
   setupLighting() {
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     this.scene.add(ambientLight);
     console.log('   └ 補助ライト(Ambient)設定完了');
   }
-  
-  // =============================================================================
-  // ★★★ 修正2: cat.glbロード（シェイプキー関連コード削除）★★★
-  // =============================================================================
+
   async loadCatModel() {
     console.log('🐱 cat.glb 読み込み開始');
     console.log(`   └ パス: ${CONFIG.CAT_PATH}`);
-    
+
     this.catMixer = null;
     this.catModel = null;
-    
+
     try {
       if (!this.gltfLoader) {
         console.log('   └ GLTFLoader初期化が必要');
         this.initGLTFLoader();
       }
-      
+
       console.log('   └ GLTFLoaderで読み込み開始...');
       const gltf = await this.gltfLoader.loadAsync(CONFIG.CAT_PATH);
       console.log('   └ ✅ GLTFデータ読み込み成功');
-      
+
       const catModel = gltf.scene;
       this.catModel = catModel;
-      
+
       catModel.traverse(node => this.setupPS2Material(node));
       console.log(`   └ ✅ マテリアルセットアップ完了`);
-      
-      // ★★★ シェイプキー関連コードを完全削除 ★★★
-      
-      // ★★★ ボーンアニメーションのみ維持 ★★★
+
       if (gltf.animations && gltf.animations.length > 0) {
         console.log(`   └ 🎬 検出されたGLTFアニメーション一覧: ${gltf.animations.map(a => `'${a.name}'`).join(', ')}`);
-        
+
         const catwalkAnimation = gltf.animations.find(clip => clip.name === 'CATWALK');
         if (catwalkAnimation) {
           this.catMixer = new THREE.AnimationMixer(catModel);
@@ -1649,23 +1675,23 @@ class PS2Portfolio {
           console.log(`   └ ▶️ GLTFアニメーション 'CATWALK' を再生開始`);
         }
       }
-      
+
       catModel.position.set(3.5, 0.5, 0);
       catModel.scale.set(1.0, 1.0, 1.0);
-      
+
       this.scene.add(catModel);
       this.resourceLoaded('cat.glb (アニメーション)');
       console.log('   └ ✅ cat.glb シーン追加完了');
-      
+
       return catModel;
-      
+
     } catch (error) {
       console.error(`   └ ❌ cat.glb 読み込みで例外発生:`, error);
       console.error(`   └ エラースタック:`, error.stack);
       this.resourceLoaded('cat.glb (エラー)');
-      
+
       const fallbackGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-      const fallbackMat = new THREE.MeshLambertMaterial({ 
+      const fallbackMat = new THREE.MeshLambertMaterial({
         color: 0xFF00FF,
         emissive: 0x660066
       });
@@ -1673,27 +1699,27 @@ class PS2Portfolio {
       fallbackMesh.position.set(3.5, 0.5, 0);
       fallbackMesh.name = 'cat_fallback';
       this.scene.add(fallbackMesh);
-      
+
       return null;
     }
   }
-  
+
   async loadAndArrangePackages() {
     console.log('%c📦 パッケージ＆cat.glb読み込み開始', 'color: #00AAFF; font-size: 14px; font-weight: bold;');
-    
+
     const spacing = 1.2;
     const totalModels = this.models.length;
     const startX = -((totalModels - 1) * spacing) / 2;
-    
+
     const loadPromises = this.models.map(async (modelData, i) => {
       const x = startX + (i * spacing);
       const result = await this.loadModel(modelData.url, modelData.name);
-      
+
       const model = result.model;
       model.position.set(x, 0.1, 2.0);
       model.rotation.y = Math.PI;
       model.scale.set(1.0, 1.0, 1.0);
-      
+
       model.userData = {
         ...modelData,
         originalPosition: model.position.clone(),
@@ -1702,28 +1728,36 @@ class PS2Portfolio {
         id: modelData.id,
         index: i,
         hoverIntensity: 0,
-        animShapeKeyIndex: model.userData.animShapeKeyIndex || -1
+        animations: model.userData.animations || { openClip: null, closeClip: null, mixer: null }
       };
-      
+
+      // AnimationMixerを作成
+      if (model.userData.animations.openClip || model.userData.animations.closeClip) {
+        const mixer = new THREE.AnimationMixer(model);
+        model.userData.animations.mixer = mixer;
+        this.mixers.push(mixer);  // animate()で更新するために保存
+        console.log(`   └ 🎭 AnimationMixer作成: ${modelData.name}`);
+      }
+
       this.scene.add(model);
       this.gamePackages.push(model);
-      
+
       if (result.isFallback) {
         model.traverse(node => {
           if (node.isMesh) {
-            node.material = new THREE.MeshLambertMaterial({ 
+            node.material = new THREE.MeshLambertMaterial({
               color: 0xFF00FF,
               emissive: 0x660066
             });
           }
         });
       }
-      
+
       console.log(`   └ ${modelData.name}: ${result.isFallback ? '❌ フォールバック' : '✅ 成功'}`);
     });
-    
+
     await Promise.all(loadPromises);
-    
+
     console.log('🐱 cat.glb ロードを開始します...');
     try {
       await this.loadCatModel();
@@ -1731,20 +1765,20 @@ class PS2Portfolio {
     } catch (catError) {
       console.error('❌ cat.glb ロード失敗:', catError);
     }
-    
+
     console.log('%c✅ 全パッケージ配置完了', 'color: #00FF00; font-size: 14px; font-weight: bold;');
   }
-  
+
   updateCameraShake() {
     if (!CONFIG.CAMERA_SHAKE.enabled) return;
-    
+
     const time = Date.now() * 0.001;
     this.cameraNoise.set(
       Math.sin(time * 5.0) * CONFIG.CAMERA_SHAKE.intensity * (0.3 + Math.random() * 0.2),
       Math.cos(time * 4.3) * CONFIG.CAMERA_SHAKE.intensity * (0.2 + Math.random() * 0.1),
       Math.sin(time * 6.1) * CONFIG.CAMERA_SHAKE.intensity * (0.15 + Math.random() * 0.1)
     );
-    
+
     if (CONFIG.CAMERA_SHAKE.trauma > 0.001) {
       const shake = Math.pow(CONFIG.CAMERA_SHAKE.trauma, 2);
       const traumaOffset = new THREE.Vector3(
@@ -1758,49 +1792,57 @@ class PS2Portfolio {
       this.cameraShakeOffset.copy(this.cameraNoise);
     }
   }
-  
-  // =============================================================================
-  // ★★★ 修正3: メインアニメーションループ（catシェイプキー削除）★★★
-  // =============================================================================
+
   animate() {
     requestAnimationFrame(() => this.animate());
-    
-    if (!this.isLoadingComplete) {
-      if (this.renderer?.domElement) {
-        this.renderer.render(this.scene, this.camera);
-      }
+
+    if (!this.gameSceneInitialized) {
       return;
     }
 
     if (document.hidden) return;
 
+    // 60fps制限: 前回のレンダリングから一定時間経過していない場合はスキップ
+    const currentTime = performance.now();
+    const timeSinceLastRender = currentTime - this.lastRenderTime;
+    const targetFrameTime = 15; // 約60fps (処理オーバーヘッドを考慮して15msに設定)
+
+    if (timeSinceLastRender < targetFrameTime) {
+      return; // まだ次のフレームを描画する時間ではない
+    }
+
+    // 実際のレンダリング時刻を記録
+    this.lastRenderTime = currentTime;
+
     try {
       this.frameCount++;
-      const currentTime = performance.now();
-      const deltaTime = currentTime - this.lastTime;
-      
-      if (deltaTime >= 1000) {
-        this.fps = Math.floor(this.frameCount / (deltaTime / 1000));
+
+      if (currentTime - this.lastFpsTime >= 1000) {
+        this.fps = Math.floor(this.frameCount / ((currentTime - this.lastFpsTime) / 1000));
         this.frameCount = 0;
-        this.lastTime = currentTime;
-        
+        this.lastFpsTime = currentTime;
+
+        const fpsElement = document.getElementById('system-fps');
+        if (fpsElement) fpsElement.textContent = `${this.fps}`;
+
         const fpsCounter = document.getElementById('fps-counter');
         if (fpsCounter?.classList.contains('visible')) {
           fpsCounter.textContent = `FPS: ${this.fps}`;
         }
       }
 
-      if (this.frameCount % CONFIG.PERFORMANCE.frameSkip !== 0 && !this.selectedObject) {
-        if (this.composer) {
-          this.composer.render();
-        } else if (this.renderer) {
-          this.renderer.render(this.scene, this.camera);
-        }
-        return;
-      }
+      const shouldUpdateLogic = this.frameCount % CONFIG.PERFORMANCE.frameSkip === 0;
 
-      if (!this.isAnimating && !this.selectedObject) {
-        this.updateHoverEffects();
+      if (shouldUpdateLogic) {
+        // Raycasterをanimate()内に移動
+        if (!this.isAnimating && !this.selectedObject) {
+          this.updateHoverEffects();
+        }
+
+        // マウスライトの減衰アニメーションをanimate()内で実行
+        if (this.mouseLight) {
+          this.mouseLight.intensity += (this.targetMouseLightIntensity - this.mouseLight.intensity) * 0.1;
+        }
       }
 
       this.gamePackages.forEach(pkg => {
@@ -1813,13 +1855,10 @@ class PS2Portfolio {
       });
 
       const rawDelta = this.clock.getDelta();
-      const safeDelta = (typeof rawDelta === 'number' && isFinite(rawDelta) && rawDelta >= 0) 
-        ? Math.min(rawDelta, 0.1) 
+      const safeDelta = (typeof rawDelta === 'number' && isFinite(rawDelta) && rawDelta >= 0)
+        ? Math.min(rawDelta, 0.1)
         : 0.016;
 
-      // ★★★ cat用シェイプキーアニメーションコードを完全削除 ★★★
-
-      // ★★★ catMixerの更新は維持 ★★★
       if (this.catMixer && this.catModel && typeof this.catMixer.update === 'function') {
         try {
           this.catMixer.update(safeDelta);
@@ -1827,8 +1866,6 @@ class PS2Portfolio {
           console.error('💥 catMixer.update() エラー:', mixerError);
           this.catMixer = null;
         }
-      } else if (this.frameCount % 300 === 0) {
-        console.warn(`⚠️ catMixer非アクティブ: mixer=${typeof this.catMixer}, model=${typeof this.catModel}`);
       }
 
       this.mixers.forEach(mixer => {
@@ -1855,12 +1892,9 @@ class PS2Portfolio {
 
     } catch (mainError) {
       console.error('🚨 animate() 未捕捉例外:', mainError);
-      if (this.frameCount % 300 === 0) {
-        console.warn('🔄 アニメーションループが安定しない状態が続いています');
-      }
     }
   }
-  
+
   updateHoverEffects() {
     if (this.isAnimating || this.selectedObject) {
       if (this.hoveredObject) {
@@ -1873,10 +1907,10 @@ class PS2Portfolio {
       }
       return;
     }
-    
+
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.gamePackages, true);
-    
+
     let currentHover = null;
     if (intersects.length > 0) {
       let obj = intersects[0].object;
@@ -1909,25 +1943,33 @@ class PS2Portfolio {
       });
     }
   }
-  
+
   onWindowResize() {
     if (!this.renderer || !this.camera) return;
-    
+
     const isMobileView = (window.innerWidth <= 1024);
     this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
     const width = Math.max(1, window.innerWidth - this.sideNavWidth);
     const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
-    
+
     this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
-    
+
     this.camera.aspect = width / height;
-    this.camera.fov = isMobileView ? 65 : 50; 
+    this.camera.fov = isMobileView ? 65 : 50;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
-    
+
+    // EffectComposerのサイズ更新とレンダーターゲットの再構築
     if (this.composer) {
       this.composer.setSize(width, height);
+
+      // 各パスのレンダーターゲットも更新
+      this.composer.passes.forEach(pass => {
+        if (pass.fullscreenMaterial) {
+          pass.uniforms = pass.fullscreenMaterial.uniforms;
+        }
+      });
     }
   }
 }
@@ -1937,7 +1979,7 @@ class PS2Portfolio {
 // =============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('📄 DOM読み込み完了');
-  
+
   if (!window.THREE) {
     console.error('❌ Three.jsが読み込まれていません！');
     return;
@@ -1947,7 +1989,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     alert('⚠️ ローカルファイル(file://)では動作しません。\n\nHTTPサーバーを起動してください:\n\n1. ターミナルでプロジェクトルートに移動\n2. コマンド実行: npx serve . -p 3000\n3. ブラウザで http://localhost:3000 にアクセス');
     return;
   }
-  
+
   try {
     window.ps2Portfolio = new PS2Portfolio();
     console.log('🎮 アプリケーション初期化完了');

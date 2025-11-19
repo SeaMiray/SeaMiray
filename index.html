@@ -1,45 +1,162 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SeaaMirayのサイト">
-  <meta property="og:title" content="SeaMiray">
-  <meta property="og:description" content="レトロ3Dサイト">
-  <title>SeaaMirayのサイト</title>
-  
-  <!-- フォント -->
+  <title>SeaaMiray Secret Base</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-  
-  <!-- Three.jsコア -->
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700&display=swap"
+    rel="stylesheet">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  
-  <!-- 必要なローダー -->
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
-  
-  <!-- ポストプロセス用 -->
   <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-  
-  <!-- GSAP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-  
-  <!-- CSS -->
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <!-- 凝ったローディング画面 -->
+
+  <div id="layer-atmosphere"></div>
+
+  <div id="layer-asset-bg">
+    <div class="bg-image normal"></div>
+    <div class="bg-image wireframe"></div>
+    <div class="bg-overlay-color"></div>
+  </div>
+
+  <div class="site-wrapper">
+    <nav class="side-nav" role="navigation">
+      <div class="nav-noise-overlay"></div>
+
+      <div class="nav-mini-header"></div>
+
+      <div class="system-info-bar">
+        <div class="system-time" id="system-time">00:00:00</div>
+        <div class="system-stats">
+          <div class="stat-item"><span>FPS:</span><span id="system-fps">--</span></div>
+          <div class="stat-item"><span>MEM:</span><span id="system-mem">--</span></div>
+          <div class="stat-item"><span>GPU:</span><span id="system-gpu">ON</span></div>
+        </div>
+      </div>
+
+      <div class="window-controls">
+        <div class="window-btn minimize">_</div>
+        <div class="window-btn maximize">□</div>
+        <div class="window-btn close">✕</div>
+      </div>
+
+      <div class="nav-header">
+        <a href="#" class="nav-tab active-tab" data-target="game-dev" aria-current="page">
+          <div class="power-button-simple"></div>
+          <span class="nav-text-power">制作ゲーム</span>
+        </a>
+      </div>
+      <ul class="nav-list">
+        <li class="nav-item-folder">
+          <a href="#" class="nav-tab" data-target="assets" aria-current="false">
+            <div class="folder-icon"></div>
+            <span class="nav-text">販売アセット</span>
+          </a>
+        </li>
+        <li class="nav-item-folder">
+          <a href="#" class="nav-tab" data-target="portfolio" aria-current="false">
+            <div class="folder-icon"></div>
+            <span class="nav-text">制作記録</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="drive-info">
+        <div class="drive-label">C:\ PORTFOLIO\</div>
+        <div class="drive-bar">
+          <div class="drive-fill" style="width: 68%"></div>
+        </div>
+        <div class="drive-stats">6.8GB / 10GB</div>
+      </div>
+    </nav>
+
+    <main class="main-content" role="main">
+      <section id="game-dev" class="content-section active">
+        <div id="three-canvas-container" role="img" aria-label="3D卓上ビュー: パッケージをクリックして詳細を表示"></div>
+        <div class="scene-info">
+          <div class="scene-help ps2-text">クリックでゲームカセットを選択 / ESCで解除 / ←→キーで移動</div>
+        </div>
+      </section>
+
+      <section id="assets" class="content-section">
+        <div class="section-header">
+          <h2 class="ps2-text">販売中の3Dアセット</h2>
+          <p class="section-description ps2-text">Blenderで作成したフォトリアルな3Dモデルアセット</p>
+          <p class="catch-copy">資</p>
+        </div>
+        <div class="asset-grid-modern" id="asset-grid"></div>
+      </section>
+
+      <section id="portfolio" class="content-section">
+        <div class="section-header">
+          <h2 class="ps2-text">制作記録</h2>
+          <p class="section-description ps2-text">制作日記技術メモなど</p>
+          <p class="catch-copy2">制</p>
+        </div>
+        <div class="portfolio-grid" id="portfolio-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="layer-save-icon">
+    <div class="ps2-cube">
+      <div class="face front"></div>
+      <div class="face back"></div>
+      <div class="face right"></div>
+      <div class="face left"></div>
+      <div class="face top"></div>
+      <div class="face bottom"></div>
+      <div class="core"></div>
+    </div>
+    <div class="save-text">Rendering...</div>
+  </div>
+
+  <div class="game-description-overlay" id="game-desc-overlay">
+    <div class="description-window">
+      <div class="window-frame">
+        <div class="frame-line"></div>
+      </div>
+      <button class="close-button" id="close-description" aria-label="説明ウィンドウを閉じる">✕</button>
+      <div class="window-content">
+        <div class="ps2-texture-overlay"></div>
+        <div class="info-panel">
+          <h3 id="game-title" class="ps2-text">Title</h3>
+          <div class="description-body ps2-text" id="game-description"></div>
+          <div class="game-stats">
+            <div class="stat-item"><span class="stat-label">ジャンル:</span><span class="stat-value"
+                id="game-genre">-</span></div>
+            <div class="stat-item"><span class="stat-label">プレイ時間:</span><span class="stat-value"
+                id="game-playtime">-</span></div>
+            <div class="stat-item"><span class="stat-label">制作期間:</span><span class="stat-value"
+                id="game-devtime">-</span></div>
+            <div class="stat-item"><span class="stat-label">使用ツール:</span><span class="stat-value"
+                id="game-tools">-</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="loading-screen">
     <div class="loading-system-info">
       <div class="loading-model">SeaMiray Secret Base</div>
       <div class="loading-version">System ROM Version 2025-11-08.21</div>
-      <div class="loading-copyright">Welcome to my secret base, where no one can find me</div>
+      <div class="loading-copyright">Welcome to my secret base</div>
     </div>
     <div class="loading-ps2-logo">SeaMiray Base<span class="ps2-trademark"></span></div>
     <div class="loading-spinner"></div>
@@ -49,153 +166,22 @@
     </div>
     <div class="loading-stage" id="loading-stage">Initializing...</div>
     <div class="loading-status" id="loading-status"></div>
+
   </div>
-  
-  <!-- パーティクル演出レイヤー -->
+
   <div class="particle-layer" id="particle-layer"></div>
-  
-  <!-- セクショントランジションオーバーレイ -->
   <div class="section-transition" id="section-transition"></div>
-  
-  <!-- キーボードナビゲーションインジケーター -->
   <div class="keyboard-indicator" id="keyboard-indicator">
     <div class="indicator-item" data-key="←">←</div>
     <div class="indicator-item" data-key="→">→</div>
     <div class="indicator-item" data-key="ESC">ESC</div>
   </div>
-  
-  <!-- エフェクトレイヤー -->
   <div class="vhs-noise"></div>
   <div class="scanlines"></div>
   <div class="crt-warp"></div>
   <div class="fps-counter" id="fps-counter">FPS: --</div>
-  
-  <!-- パッケージツールチップ -->
-  <div id="package-tooltip">
-    <div class="tooltip-title"></div>
-    <div class="tooltip-genre"></div>
-  </div>
-  
-  <!-- ゲーム説明オーバーレイ -->
-  <div class="game-description-overlay" id="game-desc-overlay">
-    <div class="description-window">
-      <div class="window-frame">
-        <div class="frame-line"></div>
-      </div>
-      <button class="close-button" id="close-description" aria-label="閉じる">✕</button>
-      <div class="window-content">
-        <div class="ps2-texture-overlay"></div>
-        <div class="info-panel">
-          <h3 id="game-title" class="ps2-text">ゲームタイトル</h3>
-          <div class="description-body ps2-text" id="game-description"></div>
-          <div class="game-stats">
-            <div class="stat-item">
-              <span class="stat-label">ジャンル:</span>
-              <span class="stat-value" id="game-genre">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">プレイ時間:</span>
-              <span class="stat-value" id="game-playtime">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">制作期間:</span>
-              <span class="stat-value" id="game-devtime">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">使用ツール:</span>
-              <span class="stat-value" id="game-tools">-</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="site-wrapper">
-    <!-- パソコン風ヘッダー -->
-    <nav class="side-nav" role="navigation" aria-label="メインナビゲーション">
-      <div class="nav-noise-overlay"></div>
-      
-      <!-- システム情報バー -->
-      <div class="system-info-bar">
-        <div class="system-time" id="system-time">00:00:00</div>
-        <div class="system-stats">
-          <div class="stat-item"><span>FPS:</span><span id="system-fps">--</span></div>
-          <div class="stat-item"><span>MEM:</span><span id="system-mem">--</span></div>
-          <div class="stat-item"><span>GPU:</span><span id="system-gpu">ON</span></div>
-        </div>
-      </div>
-      
-      <!-- ウィンドウコントロール -->
-      <div class="window-controls">
-        <div class="window-btn minimize" title="Minimize">_</div>
-        <div class="window-btn maximize" title="Maximize">□</div>
-        <div class="window-btn close" title="Close">✕</div>
-      </div>
-      
-      <div class="nav-header">
-        <a href="#" class="nav-tab active-tab" data-target="game-dev" aria-current="page">
-          <div class="power-button-simple"></div>
-          <span class="nav-text-power">制作ゲーム</span>
-        </a>
-      </div>
-      <ul class="nav-list">
-        <li class="nav-item-folder">
-          <a href="#" class="nav-tab" data-target="assets" aria-label="販売アセット">
-            <div class="folder-icon"></div>
-            <span class="nav-text">販売アセット</span>
-          </a>
-        </li>
-        <li class="nav-item-folder">
-          <a href="#" class="nav-tab" data-target="portfolio" aria-label="制作記録">
-            <div class="folder-icon"></div>
-            <span class="nav-text">制作記録</span>
-          </a>
-        </li>
-      </ul>
-      
-      <!-- ドライブ情報 -->
-      <div class="drive-info">
-        <div class="drive-label">C:\ PORTFOLIO\</div>
-        <div class="drive-bar">
-          <div class="drive-fill" style="width: 68%"></div>
-        </div>
-        <div class="drive-stats">6.8GB / 10GB</div>
-      </div>
-    </nav>
-    
-    <main class="main-content" role="main">
-      <section id="game-dev" class="content-section active" aria-label="3Dゲームビュー">
-        <div id="three-canvas-container" role="img" aria-label="3D卓上ビュー: パッケージをクリックしてください"></div>
-        <div class="scene-info">
-          <div class="scene-help ps2-text">クリックでゲームカセットを選択 / ESCで解除 / ←→キーで移動</div>
-        </div>
-      </section>
-      
-      <!-- 洗練されたアセットセクション -->
-      <section id="assets" class="content-section" aria-label="販売アセット">
-        <div class="section-header">
-          <h2 class="ps2-text">販売中の3Dアセット</h2>
-          <p class="section-description ps2-text">Blenderで作成したフォトリアルな3Dモデルアセット</p>
-        </div>
-        <div class="asset-grid-modern" id="asset-grid">
-          <!-- JSで動的に生成される -->
-        </div>
-      </section>
-      
-      <!-- 洗練された制作記録セクション -->
-      <section id="portfolio" class="content-section" aria-label="制作記録">
-        <div class="section-header">
-          <h2 class="ps2-text">制作記録</h2>
-          <p class="section-description ps2-text">開発プロセスと技術検証の記録アーカイブ</p>
-        </div>
-        <div class="portfolio-grid" id="portfolio-grid">
-          <!-- JSで動的に生成される -->
-        </div>
-      </section>
-    </main>
-  </div>
-  
+
   <script src="script.js"></script>
-</body>
+  body>
+
 </html>
