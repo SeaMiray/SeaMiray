@@ -18,5 +18,21 @@
         "url": "https://seamiray.booth.pm/items/7656191"
       }
     ]
+  },
+  {
+    "title": "カラフルなバドミントンセット(3種類)",
+    "description": "ラケット、シャトル、リストバンドの3点セットです",
+    "image": "images/assets/badminton.avif",
+    "wireframe_image": "images/assets/badminton.avif",
+    "polycount": "1,516 Polys",
+    "software": "Blender",
+    "price": "Free",
+    "badge": "無料配布中",
+    "links": [
+      {
+        "label": "BOOTH",
+        "url": "https://seamiray.booth.pm/items/6730759"
+      }
+    ]
   }
 ]
