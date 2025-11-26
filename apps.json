@@ -1,0 +1,18 @@
+[
+    {
+        "title": "Pixel Crush",
+        "description": "色数を減らしたり、ドット絵風な画像に変換したりすることができるようになるアプリです。",
+        "image": "images/assets/pixel_crush.avif",
+        "wireframe_image": "images/assets/pixel_crush.avif",
+        "polycount": "公開日",
+        "software": "2025年11月26日",
+        "price": "無料",
+        "badge": "無料",
+        "links": [
+            {
+                "label": "Go to App",
+                "url": "https://seamiray.github.io/Pixel-Crush/"
+            }
+        ]
+    }
+]

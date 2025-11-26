@@ -1764,3 +1764,19 @@ button:focus-visible {
     text-align: center;
   }
 }
+
+/* Introduction Grid */
+.introduction-grid {
+  padding: 0 40px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+@media (max-width: 768px) {
+  .introduction-grid {
+    padding: 0 20px 20px;
+  }
+}

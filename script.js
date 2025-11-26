@@ -239,7 +239,9 @@ class PS2Portfolio {
     this.models = [];
     this.gamePackages = [];
     this.assets = [];
+    this.apps = [];
     this.portfolio = [];
+    this.introduction = [];
 
     this.catMixer = null;
     this.catModel = null;
@@ -339,9 +341,10 @@ class PS2Portfolio {
 
     if (stage) stage.textContent = 'Loading data files...';
 
-    const [assetsResult, portfolioResult] = await Promise.allSettled([
+    const [assetsResult, portfolioResult, appsResult] = await Promise.allSettled([
       this.loadAssets(),
-      this.loadPortfolio()
+      this.loadPortfolio(),
+      this.loadApps()
     ]);
 
     if (assetsResult.status === 'fulfilled') {
@@ -356,9 +359,16 @@ class PS2Portfolio {
       this.portfolio = [];
     }
 
-    this.resourcesToLoad += 2;
+    if (appsResult.status === 'fulfilled') {
+      this.apps = appsResult.value;
+    } else {
+      this.apps = [];
+    }
+
+    this.resourcesToLoad += 3;
     this.resourceLoaded('assets.json');
     this.resourceLoaded('portfolio.json');
+    this.resourceLoaded('apps.json');
 
     this.isLoadingComplete = true;
   }
@@ -386,6 +396,19 @@ class PS2Portfolio {
       return [];
     }
   }
+  async loadApps() {
+    try {
+      console.log('📂 apps.json読み込み開始');
+      const response = await fetch('./apps.json');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      console.log('✅ apps.json読み込み成功:', data);
+      return data || [];
+    } catch (error) {
+      console.warn('apps.json読み込みエラー:', error);
+      return [];
+    }
+  }
 
   renderCurrentSection() {
     const activeTab = document.querySelector('.nav-tab.active-tab');
@@ -396,6 +419,8 @@ class PS2Portfolio {
       this.renderAssets();
     } else if (targetId === 'portfolio' && this.portfolio.length > 0) {
       this.renderPortfolio();
+    } else if (targetId === 'apps') {
+      this.renderApps();
     }
   }
 
@@ -544,6 +569,93 @@ class PS2Portfolio {
     });
 
     console.log('✅ ポートフォリオグリッドレンダリング完了');
+  }
+
+  renderApps() {
+    const container = document.getElementById('Apps-grid');
+    if (!container || container.children.length > 0) return;
+
+    const bgLayer = document.getElementById('layer-asset-bg');
+    const imgNormal = bgLayer ? bgLayer.querySelector('.bg-image.normal') : null;
+    const imgWire = bgLayer ? bgLayer.querySelector('.bg-image.wireframe') : null;
+
+    console.log('🎨 renderApps開始');
+
+    let hoverTimer = null;
+
+    if (this.apps.length === 0) {
+      container.innerHTML = `<div class="error-notification" style="position: static; margin: 40px auto;"><h3>データ読み込みエラー</h3><p>データがありません。</p></div>`;
+      return;
+    }
+
+    this.apps.forEach((app) => {
+      const card = document.createElement('div');
+      card.className = 'asset-card-modern';
+
+      const links = app.links || (app.link ? [{ label: '詳細を見る', url: app.link }] : []);
+      let buttonsHtml = links.length > 0
+        ? `<div class="asset-links-container"><div class="split-btn-trigger">詳細を見る</div><div class="split-btn-menu">${links.map(l => `<a href="${l.url}" target="_blank" class="shop-link-item">${l.label}</a>`).join('')}</div></div>`
+        : `<button class="btn" disabled>準備中</button>`;
+
+      card.innerHTML = `
+        <div class="asset-image-container">
+          <img src="${app.image}" alt="${app.title}">
+          ${app.badge ? `<span class="asset-badge ${app.badge === '人気' ? 'popular' : ''}">${app.badge}</span>` : ''}
+        </div>
+        <div class="asset-content">
+          <h3 class="ps2-text">${app.title}</h3>
+          <p class="asset-description ps2-text">${app.description}</p>
+          <div class="asset-meta">
+            <span>${app.polycount}</span>
+            <span>${app.software}</span>
+          </div>
+        </div>
+        <div class="asset-footer">
+          <span class="asset-price ps2-text">${app.price}</span>
+          ${buttonsHtml}
+        </div>
+      `;
+
+      card.querySelector('img').onerror = function () {
+        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PC9zdmc+';
+      };
+
+      if (bgLayer && imgNormal && imgWire) {
+        card.addEventListener('mouseenter', () => {
+          const normalSrc = app.image;
+          const wireSrc = app.wireframe_image || app.image;
+
+          imgNormal.style.backgroundImage = `url('${normalSrc}')`;
+          imgWire.style.backgroundImage = `url('${wireSrc}')`;
+
+          bgLayer.classList.add('active');
+          bgLayer.setAttribute('data-mode', 'normal');
+
+          if (hoverTimer) clearTimeout(hoverTimer);
+          hoverTimer = setTimeout(() => {
+            bgLayer.setAttribute('data-mode', 'wireframe');
+            this.soundManager.playSelect();
+          }, 1000);
+        });
+
+        card.addEventListener('mouseleave', () => {
+          if (hoverTimer) clearTimeout(hoverTimer);
+
+          bgLayer.classList.remove('active');
+
+          setTimeout(() => {
+            bgLayer.setAttribute('data-mode', 'normal');
+          }, 500);
+        });
+      }
+
+      const btn = card.querySelector('.asset-links-container');
+      if (btn) btn.addEventListener('mouseenter', () => this.soundManager.playSelect());
+
+      container.appendChild(card);
+    });
+
+    console.log('✅ アセットグリッド描画完了');
   }
 
   showPortfolioDetail(item) {
