@@ -223,7 +223,10 @@ class PS2Portfolio {
 
     this.gameSceneInitialized = false;
     this.desktopNavWidth = 260;
-    this.mobileHeaderHeight = 100;
+
+    // モバイル版のヘッダー（またはフッター）の高さを動的に設定
+    const isSmallMobile = (window.innerWidth <= 480);
+    this.mobileHeaderHeight = isSmallMobile ? 70 : 100;
 
     const isMobile = (window.innerWidth <= 1024);
     this.sideNavWidth = isMobile ? 0 : this.desktopNavWidth;
@@ -2060,6 +2063,11 @@ class PS2Portfolio {
     if (!this.renderer || !this.camera) return;
 
     const isMobileView = (window.innerWidth <= 1024);
+    const isSmallMobile = (window.innerWidth <= 480);
+
+    // 480px以下の場合はフッターになるため70px、それ以外(タブレット)は100px
+    this.mobileHeaderHeight = isSmallMobile ? 70 : 100;
+
     this.sideNavWidth = isMobileView ? 0 : this.desktopNavWidth;
     const width = Math.max(1, window.innerWidth - this.sideNavWidth);
     const height = Math.max(1, window.innerHeight - (this.sideNavWidth === 0 ? this.mobileHeaderHeight : 0));
