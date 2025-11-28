@@ -1714,43 +1714,116 @@ button:focus-visible {
 /* スマートフォン縦向き特化 (さらに小さい画面) */
 @media (max-width: 480px) {
   :root {
-    --header-height: 90px;
+    --header-height: 0px; /* 上部ヘッダーなし */
+    --footer-height: 70px; /* 下部ナビの高さ */
   }
 
+  /* テキスト復活 */
   .nav-text-power,
   .nav-text {
-    display: none;
+    display: block;
+    font-size: 0.65rem;
+    margin-top: 4px;
+    line-height: 1;
   }
 
-  /* 文字を消してアイコンのみにする */
+  /* ナビゲーションを下部へ */
+  .side-nav {
+    top: auto;
+    bottom: 0;
+    height: var(--footer-height);
+    border-bottom: none;
+    border-top: 2px solid #000;
+    justify-content: space-evenly;
+    padding: 0;
+    z-index: 500; /* モーダルより下、キャンバスより上 */
+    display: flex;
+  }
+
+  .main-content {
+    margin-top: 0;
+    height: calc(100vh - var(--footer-height));
+    margin-bottom: var(--footer-height);
+  }
+
+  /* アイコンのみレイアウト解除、縦並びに */
   .nav-header {
-    margin-right: 5px;
-  }
-
-  .power-button-simple {
     margin-right: 0;
-  }
-
-  .nav-item-folder .nav-tab {
-    padding: 10px;
-  }
-
-  .folder-icon {
-    margin-right: 0;
-  }
-
-  .nav-list {
-    gap: 10px;
+    flex: 1;
+    display: flex;
     justify-content: center;
+    align-items: center;
+    border-right: 1px solid #2a2624;
   }
 
   .nav-header .nav-tab {
-    padding: 5px;
+    flex-direction: column;
+    padding: 5px 0;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .power-button-simple {
+    width: 24px;
+    height: 24px;
+    margin-right: 0;
+    margin-bottom: 2px;
+    border-width: 2px;
+  }
+
+  .nav-list {
+    flex: 3;
+    gap: 0;
+    justify-content: space-evenly;
+    display: flex;
+  }
+
+  .nav-item-folder {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-left: none;
+  }
+
+  .nav-item-folder .nav-tab {
+    padding: 5px 0;
+    border: none;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .folder-icon {
+    width: 22px;
+    height: 16px;
+    margin-right: 0;
+    margin-bottom: 2px;
+  }
+
+  .folder-icon::before {
+    top: -5px;
+    left: 2px;
+  }
+
+  /* 3Dキャンバスなどの高さ調整 */
+  #three-canvas-container {
+    height: calc(100vh - var(--footer-height));
+  }
+
+  /* その他調整 */
+  .asset-grid-modern,
+  .portfolio-grid {
+    padding: 15px 15px 30px; /* 下部に余白 */
   }
 
   .asset-image-container,
   .portfolio-image {
-    height: 180px;
+    height: 160px;
   }
 
   .asset-footer {
@@ -1762,6 +1835,21 @@ button:focus-visible {
   .btn {
     width: 100%;
     text-align: center;
+  }
+
+  /* モーダル位置調整 */
+  .description-window {
+    max-height: calc(85vh - var(--footer-height));
+  }
+
+  #layer-save-icon {
+    bottom: calc(20px + var(--footer-height)); /* アイコンが隠れないように */
+    right: 10px;
+    transform: scale(0.7);
+  }
+
+  .scene-info {
+    bottom: calc(10px + var(--footer-height));
   }
 }
 
