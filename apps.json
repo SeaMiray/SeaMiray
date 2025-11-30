@@ -6,12 +6,28 @@
         "wireframe_image": "images/assets/pixel_crush.avif",
         "polycount": "公開日",
         "software": "2025年11月26日",
-        "price": "無料",
-        "badge": "無料",
+        "price": "FREE",
+        "badge": "公開中",
         "links": [
             {
                 "label": "Go to App",
                 "url": "https://seamiray.github.io/Pixel-Crush/"
+            }
+        ]
+    },
+    {
+        "title": "Poly Packer",
+        "description": "3Dモデルのパッケージ化を補助するソフトです。プリセットに合わせて自動でファイルの配置を行えます。",
+        "image": "images/assets/polypacker.avif",
+        "wireframe_image": "images/assets/polypacker.avif",
+        "polycount": "公開日",
+        "software": "2025年11月30日",
+        "price": "FREE",
+        "badge": "公開中",
+        "links": [
+            {
+                "label": "Go to App",
+                "url": "https://seamiray.github.io/PolyPacker/"
             }
         ]
     }
