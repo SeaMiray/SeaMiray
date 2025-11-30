@@ -7,7 +7,7 @@
     "polycount": "12,647 Polys",
     "software": "Blender",
     "price": "¥3,000",
-    "badge": "発売中",
+    "badge": "販売中",
     "links": [
       {
         "label": "CGTrader",
@@ -16,6 +16,26 @@
       {
         "label": "BOOTH",
         "url": "https://seamiray.booth.pm/items/7656191"
+      }
+    ]
+  },
+  {
+    "title": "ペットボトル(5種)",
+    "description": "4Kテクスチャを使用した、リアルな500mlペットボトルの3Dモデルです。 ゲーム制作（Unity/Unreal Engine）、VRChatのワールド小物、映像制作など、幅広い用途にご利用いただけます。",
+    "image": "images/assets/PETBottle.avif",
+    "wireframe_image": "images/assets/PETBottle_wireframe.avif",
+    "polycount": "12,647 Polys",
+    "software": "Blender",
+    "price": "¥1,000",
+    "badge": "販売中",
+    "links": [
+      {
+        "label": "CGTrader",
+        "url": "https://www.cgtrader.com/designers/seamiray"
+      },
+      {
+        "label": "BOOTH",
+        "url": "https://seamiray.booth.pm/items/7698553"
       }
     ]
   },
@@ -32,26 +52,6 @@
       {
         "label": "BOOTH",
         "url": "https://seamiray.booth.pm/items/6730759"
-      }
-    ]
-  },
-  {
-    "title": "ペットボトル(5種)",
-    "description": "4Kテクスチャを使用した、リアルな500mlペットボトルの3Dモデルです。 ゲーム制作（Unity/Unreal Engine）、VRChatのワールド小物、映像制作など、幅広い用途にご利用いただけます。",
-    "image": "images/assets/PETBottle.avif",
-    "wireframe_image": "images/assets/PETBottle_wireframe.avif",
-    "polycount": "12,647 Polys",
-    "software": "Blender",
-    "price": "¥1,000",
-    "badge": "発売中",
-    "links": [
-      {
-        "label": "CGTrader",
-        "url": "https://www.cgtrader.com/designers/seamiray"
-      },
-      {
-        "label": "BOOTH",
-        "url": "https://seamiray.booth.pm/items/7698553"
       }
     ]
   }
