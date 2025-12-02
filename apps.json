@@ -46,5 +46,21 @@
                 "url": "https://seamiray.github.io/ImageToTexture/"
             }
         ]
+    },
+    {
+        "title": "Text Replacer",
+        "description": "特定の名称のみを別の名称に置き換えることのできるアプリです。Web上で簡単に動作します。",
+        "image": "images/assets/TextRe.avif",
+        "wireframe_image": "images/assets/TextRe.avif",
+        "polycount": "公開日",
+        "software": "2025年12月2日",
+        "price": "FREE",
+        "badge": "公開中",
+        "links": [
+            {
+                "label": "Go to App",
+                "url": "https://seamiray.github.io/TextReplacer/"
+            }
+        ]
     }
 ]
