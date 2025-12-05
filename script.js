@@ -1,5 +1,5 @@
 // =============================================================================
-// PS2ポートフォリオサイト - 完全版 script.js (最終修正版)
+// SeaMiray Portfolio - script.js
 // =============================================================================
 
 // =============================================================================
@@ -32,7 +32,19 @@ const CONFIG = {
     vignetteEnabled: true,
     noiseEnabled: true,
     pixelateEnabled: false,
-    chromaticAberration: true
+    chromaticAberration: true,
+    bloomEnabled: true,
+    bloomStrength: 0.4,
+    bloomRadius: 0.3,
+    bloomThreshold: 0.8
+  },
+
+  // ドラッグ回転設定
+  DRAG_ROTATION: {
+    enabled: true,
+    sensitivity: 0.005,
+    maxAngleX: 0.3,
+    maxAngleY: 0.5
   },
 
   // 自動回転設定
@@ -51,9 +63,10 @@ const CONFIG = {
 };
 
 // =============================================================================
-// PS2風サウンドマネージャー
+// サウンドマネージャー
 // =============================================================================
-class PS2SoundManager {
+
+class SoundManager {
   constructor() {
     this.enabled = CONFIG.PERFORMANCE.enableSound;
     this.audioContext = null;
@@ -157,9 +170,9 @@ class PS2SoundManager {
 }
 
 // =============================================================================
-// PS2風パーティクルシステム
+// パーティクルシステム
 // =============================================================================
-class PS2ParticleSystem {
+class ParticleSystem {
   constructor(container) {
     this.container = container;
     this.particles = [];
@@ -217,9 +230,9 @@ class PS2ParticleSystem {
 // =============================================================================
 // メインポートフォリオクラス
 // =============================================================================
-class PS2Portfolio {
+class Portfolio {
   constructor() {
-    console.log('🚀 PS2Portfolio初期化開始');
+    console.log('🚀 Portfolio初期化開始');
 
     this.gameSceneInitialized = false;
     this.desktopNavWidth = 260;
@@ -267,6 +280,16 @@ class PS2Portfolio {
     this.activeCameraPos = isMobile ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobile ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
 
+    // ホバー時カメラ移動用
+    this.targetCameraPos = this.activeCameraPos.clone();
+    this.targetLookAt = this.activeLookAt.clone();
+    this.baseCameraPos = this.activeCameraPos.clone();
+    this.baseLookAt = this.activeLookAt.clone();
+    this.cameraLerpSpeed = 0.05; // カメラ移動の滑らかさ
+    this.hoverLockTime = 0; // ホバーロック用タイマー
+    this.lastHoveredObject = null; // 前回ホバーしたオブジェクト
+    this.hoverLockDuration = 500; // ホバーロック持続時間(ms)
+
     this.originalCameraRotation = new THREE.Euler();
     this.cameraShakeOffset = new THREE.Vector3();
     this.cameraNoise = new THREE.Vector3();
@@ -286,10 +309,21 @@ class PS2Portfolio {
     this.clock = new THREE.Clock();
     this.mixers = [];
 
-    this.soundManager = new PS2SoundManager();
-    this.particleSystem = new PS2ParticleSystem(
+    this.soundManager = new SoundManager();
+    this.particleSystem = new ParticleSystem(
       document.getElementById('particle-layer')
     );
+
+    // ドラッグ回転用
+    this.isDragging = false;
+    this.dragStart = { x: 0, y: 0 };
+    this.cameraRotation = { x: 0, y: 0 };
+
+    // 3Dダストパーティクル
+    this.dustParticles = [];
+
+    // 選択ヒント表示済みフラグ
+    this.hintShown = localStorage.getItem('selectionHintShown') === 'true';
 
     this.init();
   }
@@ -1096,6 +1130,195 @@ class PS2Portfolio {
     });
   }
 
+  // 3Dダストパーティクル生成
+  create3DDustParticles() {
+    const particleCount = 50;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 10;     // x
+      positions[i * 3 + 1] = Math.random() * 5;          // y
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 10; // z
+      sizes[i] = Math.random() * 0.05 + 0.02;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const material = new THREE.PointsMaterial({
+      color: 0xc5a880,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.4,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending
+    });
+
+    this.dustParticleSystem = new THREE.Points(geometry, material);
+    this.scene.add(this.dustParticleSystem);
+    console.log('   └ 3Dダストパーティクル生成完了');
+  }
+
+  // ダストパーティクルアニメーション
+  updateDustParticles(time) {
+    if (!this.dustParticleSystem) return;
+
+    const positions = this.dustParticleSystem.geometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+      // ゆっくり上昇
+      positions[i + 1] += 0.002;
+      // わずかに揺れる
+      positions[i] += Math.sin(time * 0.001 + i) * 0.001;
+      positions[i + 2] += Math.cos(time * 0.001 + i) * 0.001;
+
+      // 上に行きすぎたら下に戻す
+      if (positions[i + 1] > 5) {
+        positions[i + 1] = 0;
+        positions[i] = (Math.random() - 0.5) * 10;
+        positions[i + 2] = (Math.random() - 0.5) * 10;
+      }
+    }
+    this.dustParticleSystem.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // 選択ヒント表示
+  showSelectionHint() {
+    if (this.hintShown) return;
+
+    const hint = document.createElement('div');
+    hint.id = 'selection-hint';
+    hint.innerHTML = `
+      <div class="hint-frame">
+        <div class="hint-scanline"></div>
+        <div class="hint-content">
+          <span class="hint-cursor">▶</span>
+          <span class="hint-text">CLICK PACKAGE TO VIEW DETAILS</span>
+        </div>
+        <div class="hint-border-effect"></div>
+      </div>
+    `;
+    hint.style.cssText = `
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      pointer-events: none;
+    `;
+
+    // レトロ風CSSアニメーション追加
+    const style = document.createElement('style');
+    style.id = 'hint-styles';
+    style.textContent = `
+      #selection-hint .hint-frame {
+        position: relative;
+        background: linear-gradient(180deg, rgba(10, 8, 8, 0.95) 0%, rgba(26, 23, 21, 0.95) 100%);
+        border: 2px solid #c0a080;
+        padding: 12px 24px;
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        box-shadow: 
+          0 0 10px rgba(192, 160, 128, 0.3),
+          inset 0 0 20px rgba(192, 160, 128, 0.05);
+        animation: hint-flicker 0.1s infinite;
+      }
+      
+      #selection-hint .hint-scanline {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent 0px,
+          transparent 2px,
+          rgba(0, 0, 0, 0.15) 2px,
+          rgba(0, 0, 0, 0.15) 4px
+        );
+        pointer-events: none;
+      }
+      
+      #selection-hint .hint-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #c0a080;
+        font-family: 'DotGothic16', monospace;
+        font-size: 14px;
+        text-shadow: 0 0 8px rgba(192, 160, 128, 0.5);
+        letter-spacing: 2px;
+      }
+      
+      #selection-hint .hint-cursor {
+        animation: hint-cursor-blink 0.5s step-end infinite;
+        color: #e0c39e;
+      }
+      
+      #selection-hint .hint-border-effect {
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border: 1px solid rgba(192, 160, 128, 0.3);
+        clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        animation: hint-border-glow 2s ease-in-out infinite;
+      }
+      
+      @keyframes hint-flicker {
+        0%, 95% { opacity: 1; }
+        96%, 100% { opacity: 0.97; }
+      }
+      
+      @keyframes hint-cursor-blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+      }
+      
+      @keyframes hint-border-glow {
+        0%, 100% { box-shadow: 0 0 5px rgba(192, 160, 128, 0.2); }
+        50% { box-shadow: 0 0 15px rgba(192, 160, 128, 0.4); }
+      }
+      
+      @keyframes hint-fade-in {
+        from { 
+          opacity: 0; 
+          transform: translateX(-50%) translateY(-10px);
+          filter: blur(2px);
+        }
+        to { 
+          opacity: 1; 
+          transform: translateX(-50%) translateY(0);
+          filter: blur(0);
+        }
+      }
+      
+      #selection-hint {
+        animation: hint-fade-in 0.5s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(hint);
+
+    // 6秒後に自動で消す
+    setTimeout(() => {
+      hint.style.transition = 'opacity 0.8s ease-out, filter 0.8s ease-out';
+      hint.style.opacity = '0';
+      hint.style.filter = 'blur(3px)';
+      setTimeout(() => {
+        hint.remove();
+        document.getElementById('hint-styles')?.remove();
+      }, 800);
+    }, 6000);
+
+    // フラグを保存
+    this.hintShown = true;
+
+    localStorage.setItem('selectionHintShown', 'true');
+  }
+
   initGLTFLoader() {
     if (!window.THREE) {
       console.error('❌ Three.jsが読み込まれていません！');
@@ -1156,7 +1379,7 @@ class PS2Portfolio {
           }
 
           gltf.scene.traverse(node => {
-            this.setupPS2Material(node);
+            this.setupMaterial(node);
           });
 
           // アニメーション情報をuserDataに保存
@@ -1208,10 +1431,10 @@ class PS2Portfolio {
     return pkg;
   }
 
-  setupPS2Material(node) {
+  setupMaterial(node) {
     if (!node.isMesh || !node.material) return;
     const originalMat = node.material;
-    const ps2Mat = new THREE.MeshLambertMaterial({
+    const mat = new THREE.MeshLambertMaterial({
       map: originalMat.map || null,
       color: originalMat.color || 0xffffff,
       transparent: originalMat.transparent || false,
@@ -1219,7 +1442,7 @@ class PS2Portfolio {
       side: originalMat.side || THREE.FrontSide,
       skinning: node.isSkinnedMesh === true
     });
-    node.material = ps2Mat;
+    node.material = mat;
     node.castShadow = true;
     node.receiveShadow = true;
 
@@ -1293,6 +1516,12 @@ class PS2Portfolio {
       this.setupInteraction();
       console.log('   ├ インタラクション設定完了');
 
+      // 3Dダストパーティクル生成
+      this.create3DDustParticles();
+
+      // 選択ヒント表示（初回のみ）
+      setTimeout(() => this.showSelectionHint(), 2000);
+
       window.addEventListener('resize', () => this.onWindowResize());
       this.animate();
 
@@ -1315,14 +1544,27 @@ class PS2Portfolio {
     const renderPass = new THREE.RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
 
+    // ブルームエフェクト追加
+    if (CONFIG.POST_PROCESSING.bloomEnabled && THREE.UnrealBloomPass) {
+      const bloomPass = new THREE.UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        CONFIG.POST_PROCESSING.bloomStrength,
+        CONFIG.POST_PROCESSING.bloomRadius,
+        CONFIG.POST_PROCESSING.bloomThreshold
+      );
+      this.bloomPass = bloomPass;
+      this.composer.addPass(bloomPass);
+      console.log('   └ ブルームエフェクト有効');
+    }
+
     if (CONFIG.POST_PROCESSING.vignetteEnabled) {
       this.vignettePass = this.createVignettePass();
       this.composer.addPass(this.vignettePass);
     }
 
     if (CONFIG.POST_PROCESSING.noiseEnabled) {
-      this.ps2NoisePass = this.createPS2NoisePass();
-      this.composer.addPass(this.ps2NoisePass);
+      this.noisePass = this.createNoisePass();
+      this.composer.addPass(this.noisePass);
     }
 
     if (CONFIG.POST_PROCESSING.chromaticAberration) {
@@ -1339,6 +1581,7 @@ class PS2Portfolio {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     }
   }
+
 
   createChromaticAberrationPass() {
     const chromaticShader = {
@@ -1400,8 +1643,8 @@ class PS2Portfolio {
     return new THREE.ShaderPass(vignetteShader);
   }
 
-  createPS2NoisePass() {
-    const ps2NoiseShader = {
+  createNoisePass() {
+    const noiseShader = {
       uniforms: {
         tDiffuse: { value: null },
         time: { value: 0 }
@@ -1431,7 +1674,7 @@ class PS2Portfolio {
         }
       `
     };
-    return new THREE.ShaderPass(ps2NoiseShader);
+    return new THREE.ShaderPass(noiseShader);
   }
 
   setupInteraction() {
@@ -1439,8 +1682,42 @@ class PS2Portfolio {
     canvas.style.cursor = 'pointer';
     canvas.addEventListener('click', (e) => this.onClick(e));
     canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+
+    // ドラッグ回転機能
+    if (CONFIG.DRAG_ROTATION.enabled) {
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0 && !this.hoveredObject) { // 左クリック && オブジェクト外
+          this.isDragging = true;
+          this.dragStart = { x: e.clientX, y: e.clientY };
+        }
+      });
+
+      canvas.addEventListener('mouseup', () => {
+        this.isDragging = false;
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        this.isDragging = false;
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (this.isDragging && !this.selectedObject) {
+          const deltaX = (e.clientX - this.dragStart.x) * CONFIG.DRAG_ROTATION.sensitivity;
+          const deltaY = (e.clientY - this.dragStart.y) * CONFIG.DRAG_ROTATION.sensitivity;
+
+          this.cameraRotation.y = Math.max(-CONFIG.DRAG_ROTATION.maxAngleY,
+            Math.min(CONFIG.DRAG_ROTATION.maxAngleY, this.cameraRotation.y + deltaX));
+          this.cameraRotation.x = Math.max(-CONFIG.DRAG_ROTATION.maxAngleX,
+            Math.min(CONFIG.DRAG_ROTATION.maxAngleX, this.cameraRotation.x + deltaY));
+
+          this.dragStart = { x: e.clientX, y: e.clientY };
+        }
+      });
+    }
+
     console.log('   └ マウスイベントリスナー設定完了');
   }
+
 
   onMouseMove(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -1522,6 +1799,30 @@ class PS2Portfolio {
       CONFIG.CAMERA_SHAKE.trauma = 0.8;
     }
 
+    // カメラをオブジェクトにズームイン＋右に回転（オブジェクトが左側に見える）
+    const objPos = gameObject.position.clone();
+
+    // オブジェクトのX位置に応じてカメラオフセットを調整
+    // 左端(-2.4)から右端(+2.4)のオブジェクトに対応
+    const normalizedX = objPos.x / 2.4; // -1 から +1 の範囲に正規化
+
+    // カメラ位置：オブジェクトの右上から見る（より右にオフセット）
+    const zoomPos = new THREE.Vector3(
+      objPos.x + 3.0 - normalizedX * 0.5,  // より右側に配置
+      objPos.y + 1.0,                       // 上から見る
+      objPos.z + 3.5                        // 手前に
+    );
+
+    // 視点：オブジェクトよりかなり左を見ることで、オブジェクトが画面左1/3に表示
+    const lookAtPos = new THREE.Vector3(
+      objPos.x - 2.5 - normalizedX * 0.5,  // より左側を見る
+      objPos.y + 0.1,
+      objPos.z - 1.0
+    );
+
+    this.targetCameraPos.copy(zoomPos);
+    this.targetLookAt.copy(lookAtPos);
+
     // アニメーション再生
     const animations = gameObject.userData.animations;
     if (animations && animations.mixer && animations.openClip) {
@@ -1540,18 +1841,19 @@ class PS2Portfolio {
       console.warn(`   └ ⚠️ package_openアニメーションが見つかりません`);
     }
 
-    // 説明ウィンドウを表示（拡大・移動アニメーションなし）
+    // 説明ウィンドウを表示
     setTimeout(() => {
       this.showDescription(gameObject.userData);
       this.isAnimating = false;
-    }, 100);
+    }, 300);
 
+    // 他のパッケージを縮小・透明化
     this.gamePackages.forEach(pkg => {
       if (pkg !== gameObject) {
-        gsap.to(pkg.scale, { x: 0.7, y: 0.7, z: 0.7, duration: 0.6 });
+        gsap.to(pkg.scale, { x: 0.5, y: 0.5, z: 0.5, duration: 0.6 });
         pkg.traverse(node => {
           if (node.isMesh) {
-            gsap.to(node.material, { opacity: 0.2, duration: 0.6 });
+            gsap.to(node.material, { opacity: 0.15, duration: 0.6 });
           }
         });
       }
@@ -1572,6 +1874,10 @@ class PS2Portfolio {
 
     const gameObject = this.selectedObject;
 
+    // カメラをベース位置に戻す
+    this.targetCameraPos.copy(this.baseCameraPos);
+    this.targetLookAt.copy(this.baseLookAt);
+
     // アニメーション再生
     const animations = gameObject.userData.animations;
     if (animations && animations.mixer && animations.closeClip) {
@@ -1590,15 +1896,17 @@ class PS2Portfolio {
       console.warn(`   └ ⚠️ package_closeアニメーションが見つかりません`);
     }
 
-    // 説明ウィンドウを非表示（拡大・移動アニメーションなし）
+    // 説明ウィンドウを非表示
     this.selectedObject = null;
     setTimeout(() => {
       this.isAnimating = false;
       console.log('✅ 選択解除完了');
-    }, 100);
+    }, 300);
 
-    // 他のパッケージの透明度を元に戻す
+    // 他のパッケージの透明度とスケールを元に戻す
     this.gamePackages.forEach(pkg => {
+      // スケールを元に戻す
+      gsap.to(pkg.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.6 });
       pkg.traverse(node => {
         if (node.isMesh) {
           gsap.to(node.material, { opacity: 1.0, duration: 0.6 });
@@ -1700,7 +2008,7 @@ class PS2Portfolio {
       const gltf = await this.gltfLoader.loadAsync(CONFIG.SCENE_PATH);
       this.sceneModel = gltf.scene;
       this.scene.add(this.sceneModel);
-      this.sceneModel.traverse(node => this.setupPS2Material(node));
+      this.sceneModel.traverse(node => this.setupMaterial(node));
 
       this.resourceLoaded('Scene.glb (机)');
       console.log('   └ Scene.glb 読み込み成功');
@@ -1775,7 +2083,7 @@ class PS2Portfolio {
       const catModel = gltf.scene;
       this.catModel = catModel;
 
-      catModel.traverse(node => this.setupPS2Material(node));
+      catModel.traverse(node => this.setupMaterial(node));
       console.log(`   └ ✅ マテリアルセットアップ完了`);
 
       if (gltf.animations && gltf.animations.length > 0) {
@@ -1872,6 +2180,10 @@ class PS2Portfolio {
     });
 
     await Promise.all(loadPromises);
+
+    // 矢印キーの選択順序を視覚的な配置順（左から右）に合わせるためソート
+    this.gamePackages.sort((a, b) => a.position.x - b.position.x);
+    console.log('   └ 📐 パッケージをX座標順にソート完了');
 
     console.log('🐱 cat.glb ロードを開始します...');
     try {
@@ -1989,14 +2301,42 @@ class PS2Portfolio {
 
       this.updateCameraShake();
       if (this.camera) {
-        this.camera.position.copy(this.activeCameraPos).add(this.cameraShakeOffset);
-        if (!this.selectedObject) {
-          this.camera.lookAt(this.activeLookAt);
+        // ホバー時のカメラ補間移動
+        this.activeCameraPos.lerp(this.targetCameraPos, this.cameraLerpSpeed);
+        this.activeLookAt.lerp(this.targetLookAt, this.cameraLerpSpeed);
+
+        // ドラッグ回転を適用（選択中は無効）
+        const rotatedPos = this.activeCameraPos.clone();
+        if (CONFIG.DRAG_ROTATION.enabled && !this.selectedObject) {
+          const rotationMatrix = new THREE.Matrix4();
+          rotationMatrix.makeRotationY(this.cameraRotation.y);
+          rotatedPos.applyMatrix4(rotationMatrix);
+          rotatedPos.y += this.cameraRotation.x * 2; // 上下方向
         }
+
+        this.camera.position.copy(rotatedPos).add(this.cameraShakeOffset);
+        // 常にlookAtを呼び出す
+        this.camera.lookAt(this.activeLookAt);
       }
 
-      if (this.ps2NoisePass?.uniforms?.time) {
-        this.ps2NoisePass.uniforms.time.value = currentTime * 0.001;
+      // 浮遊アニメーション：ホバー中のオブジェクトを少し浮かせる
+      this.gamePackages.forEach(pkg => {
+        const originalY = pkg.userData.originalPosition?.y || 0.1;
+        if (this.hoveredObject === pkg && !this.selectedObject) {
+          // ホバー中は浮遊
+          const targetY = originalY + 0.15 + Math.sin(currentTime * 0.003) * 0.03;
+          pkg.position.y += (targetY - pkg.position.y) * 0.1;
+        } else {
+          // 元の位置に戻る
+          pkg.position.y += (originalY - pkg.position.y) * 0.1;
+        }
+      });
+
+      // 3Dダストパーティクルアニメーション
+      this.updateDustParticles(currentTime);
+
+      if (this.noisePass?.uniforms?.time) {
+        this.noisePass.uniforms.time.value = currentTime * 0.001;
       }
 
       if (this.composer) {
@@ -2019,7 +2359,11 @@ class PS2Portfolio {
           }
         });
         this.hoveredObject = null;
+        this.lastHoveredObject = null;
       }
+      // カメラをベース位置に戻す
+      this.targetCameraPos.copy(this.baseCameraPos);
+      this.targetLookAt.copy(this.baseLookAt);
       return;
     }
 
@@ -2035,6 +2379,26 @@ class PS2Portfolio {
       if (this.gamePackages.includes(obj)) {
         currentHover = obj;
       }
+    }
+
+    // ホバーロック機能：前回ホバーしていたオブジェクトがあり、
+    // ロック時間内であれば、レイキャストがミスしても前回のオブジェクトを維持
+    const now = performance.now();
+    if (!currentHover && this.lastHoveredObject) {
+      if (now - this.hoverLockTime < this.hoverLockDuration) {
+        currentHover = this.lastHoveredObject;
+      } else {
+        this.lastHoveredObject = null;
+      }
+    }
+
+    // 新しいオブジェクトにホバーしたらロック時間をリセット
+    if (currentHover && currentHover !== this.lastHoveredObject) {
+      this.lastHoveredObject = currentHover;
+      this.hoverLockTime = now;
+    } else if (currentHover) {
+      // 同じオブジェクトにホバー継続中はロック時間を更新
+      this.hoverLockTime = now;
     }
 
     this.gamePackages.forEach(pkg => {
@@ -2057,7 +2421,34 @@ class PS2Portfolio {
         }
       });
     }
+
+    // ホバー時のカメラターゲット設定
+    if (currentHover) {
+      // オブジェクトの位置を取得
+      const objPos = currentHover.position.clone();
+
+      // オブジェクトの正面にカメラを移動（少し手前・上から見る）
+      const cameraOffset = new THREE.Vector3(0, 1.5, 4.0); // オブジェクトからの相対位置
+      const targetPos = objPos.clone().add(cameraOffset);
+
+      // ベース位置からの変位を制限（あまり大きく動かないように）
+      const maxOffset = 1.5;
+      const offsetFromBase = targetPos.clone().sub(this.baseCameraPos);
+      if (offsetFromBase.length() > maxOffset) {
+        offsetFromBase.normalize().multiplyScalar(maxOffset);
+        targetPos.copy(this.baseCameraPos).add(offsetFromBase);
+      }
+
+      this.targetCameraPos.copy(targetPos);
+      this.targetLookAt.copy(objPos).add(new THREE.Vector3(0, 0.5, 0)); // 少し上を見る
+    } else {
+      // ホバーなし → ベース位置に戻る
+      this.targetCameraPos.copy(this.baseCameraPos);
+      this.targetLookAt.copy(this.baseLookAt);
+    }
   }
+
+
 
   onWindowResize() {
     if (!this.renderer || !this.camera) return;
@@ -2074,6 +2465,12 @@ class PS2Portfolio {
 
     this.activeCameraPos = isMobileView ? this.mobileCameraPos.clone() : this.desktopCameraPos.clone();
     this.activeLookAt = isMobileView ? this.mobileLookAt.clone() : this.desktopLookAt.clone();
+
+    // ベース位置とターゲット位置も更新
+    this.baseCameraPos = this.activeCameraPos.clone();
+    this.baseLookAt = this.activeLookAt.clone();
+    this.targetCameraPos = this.activeCameraPos.clone();
+    this.targetLookAt = this.activeLookAt.clone();
 
     this.camera.aspect = width / height;
     this.camera.fov = isMobileView ? 65 : 50;
@@ -2095,6 +2492,223 @@ class PS2Portfolio {
 }
 
 // =============================================================================
+// 演出効果システム - Enhanced Visual Effects System
+// =============================================================================
+class EnhancedEffects {
+  constructor() {
+    this.mouseTrailParticles = [];
+    this.ambientParticles = [];
+    this.glitchTargets = [];
+    this.isInitialized = false;
+  }
+
+  init() {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
+    console.log('✨ 演出効果システム初期化開始');
+
+    // 各演出を初期化
+    this.initAmbientParticles();
+    this.initMouseTrail();
+    this.initRandomGlitch();
+    this.initRandomVHSGlitch();
+    this.initSectionGlitch();
+    this.initIntenseScanlines();
+    this.addVHSLineEffect();
+
+    console.log('✨ 演出効果システム初期化完了');
+  }
+
+  // 1. 背景パーティクル（浮遊ダスト）
+  initAmbientParticles() {
+    const particleCount = 15;
+    const container = document.body;
+
+    for (let i = 0; i < particleCount; i++) {
+      setTimeout(() => {
+        this.createAmbientParticle(container);
+      }, i * 1000); // 1秒間隔で生成開始
+    }
+
+    // 継続的にパーティクルを生成
+    setInterval(() => {
+      if (this.ambientParticles.length < particleCount) {
+        this.createAmbientParticle(container);
+      }
+    }, 2000);
+  }
+
+  createAmbientParticle(container) {
+    const particle = document.createElement('div');
+    particle.className = 'ambient-particle';
+    particle.style.left = `${Math.random() * 100}vw`;
+    particle.style.animationDuration = `${10 + Math.random() * 10}s`;
+    particle.style.animationDelay = `${Math.random() * 5}s`;
+
+    container.appendChild(particle);
+    this.ambientParticles.push(particle);
+
+    // アニメーション終了後に削除
+    particle.addEventListener('animationend', () => {
+      particle.remove();
+      this.ambientParticles = this.ambientParticles.filter(p => p !== particle);
+    });
+  }
+
+  // 2. ランダムグリッチエフェクト
+  initRandomGlitch() {
+    // グリッチ対象の要素を収集
+    const targets = document.querySelectorAll('.ps2-text, .nav-text, .section-description');
+    this.glitchTargets = Array.from(targets);
+
+    // ランダムにグリッチを発生
+    setInterval(() => {
+      if (Math.random() > 0.7 && this.glitchTargets.length > 0) {
+        const target = this.glitchTargets[Math.floor(Math.random() * this.glitchTargets.length)];
+        target.classList.add('glitch-target', 'glitching');
+
+        setTimeout(() => {
+          target.classList.remove('glitching');
+        }, 300);
+      }
+    }, 5000);
+
+    // 画像にもグリッチ
+    setInterval(() => {
+      if (Math.random() > 0.8) {
+        const images = document.querySelectorAll('.asset-image-container img, .portfolio-image img');
+        if (images.length > 0) {
+          const img = images[Math.floor(Math.random() * images.length)];
+          img.classList.add('glitch-image', 'glitching');
+
+          setTimeout(() => {
+            img.classList.remove('glitching');
+          }, 400);
+        }
+      }
+    }, 8000);
+  }
+
+  // 3. マウストレイル
+  initMouseTrail() {
+    const trailLength = 5;
+
+    document.addEventListener('mousemove', (e) => {
+      // パフォーマンス: 5フレームに1回のみ処理
+      if (Math.random() > 0.3) return;
+
+      const particle = document.createElement('div');
+      particle.className = 'mouse-trail-particle';
+      particle.style.left = `${e.clientX - 4}px`;
+      particle.style.top = `${e.clientY - 4}px`;
+
+      document.body.appendChild(particle);
+      this.mouseTrailParticles.push(particle);
+
+      // フェードアウトして削除
+      setTimeout(() => {
+        particle.style.opacity = '0';
+        particle.style.transform = 'scale(0.5)';
+      }, 50);
+
+      setTimeout(() => {
+        particle.remove();
+        this.mouseTrailParticles = this.mouseTrailParticles.filter(p => p !== particle);
+      }, 300);
+
+      // 最大数を超えたら古いものを削除
+      while (this.mouseTrailParticles.length > trailLength) {
+        const oldParticle = this.mouseTrailParticles.shift();
+        if (oldParticle && oldParticle.parentNode) {
+          oldParticle.remove();
+        }
+      }
+    });
+  }
+
+  // 4. ランダムVHS歪み
+  initRandomVHSGlitch() {
+    setInterval(() => {
+      if (Math.random() > 0.85) {
+        document.body.classList.add('vhs-glitch-intense');
+
+        setTimeout(() => {
+          document.body.classList.remove('vhs-glitch-intense');
+        }, 150);
+      }
+    }, 4000);
+  }
+
+  // 5. セクション遷移グリッチ
+  initSectionGlitch() {
+    // グリッチオーバーレイを追加
+    const overlay = document.createElement('div');
+    overlay.className = 'section-glitch-overlay';
+    document.body.appendChild(overlay);
+
+    // ナビゲーションタブにイベントを追加
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        overlay.classList.add('active');
+
+        setTimeout(() => {
+          overlay.classList.remove('active');
+        }, 400);
+      });
+    });
+  }
+
+  // 6. 強化スキャンライン
+  initIntenseScanlines() {
+    const scanlines = document.querySelector('.scanlines');
+    if (scanlines) {
+      // 時々強いスキャンラインを追加
+      setInterval(() => {
+        if (Math.random() > 0.7) {
+          scanlines.classList.add('intense-scan');
+
+          setTimeout(() => {
+            scanlines.classList.remove('intense-scan');
+          }, 4000);
+        }
+      }, 10000);
+    }
+  }
+
+  // 7. VHSラインエフェクト
+  addVHSLineEffect() {
+    // 時々VHSラインを表示
+    setInterval(() => {
+      if (Math.random() > 0.8) {
+        document.body.classList.add('vhs-line-glitch');
+
+        setTimeout(() => {
+          document.body.classList.remove('vhs-line-glitch');
+        }, 3000);
+      }
+    }, 15000);
+  }
+
+  // ネオンパルスを特定要素に適用
+  applyNeonPulse(selector) {
+    document.querySelectorAll(selector).forEach(el => {
+      el.classList.add('neon-pulse');
+    });
+  }
+
+  // テキストにネオンパルスを適用
+  applyNeonTextPulse(selector) {
+    document.querySelectorAll(selector).forEach(el => {
+      el.classList.add('neon-text-pulse');
+    });
+  }
+}
+
+// グローバルインスタンス
+window.enhancedEffects = new EnhancedEffects();
+
+// =============================================================================
 // DOM読み込み完了後の初期化
 // =============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2111,8 +2725,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    window.ps2Portfolio = new PS2Portfolio();
+    window.portfolio = new Portfolio();
     console.log('🎮 アプリケーション初期化完了');
+
+    // 演出効果システムを初期化（少し遅延させてメインコンテンツの読み込みを優先）
+    setTimeout(() => {
+      window.enhancedEffects.init();
+
+      // ネオンパルスをナビゲーションボタンに適用
+      window.enhancedEffects.applyNeonTextPulse('.loading-ps2-logo');
+    }, 2000);
+
   } catch (error) {
     console.error('💥 アプリケーション初期化失敗:', error);
   }

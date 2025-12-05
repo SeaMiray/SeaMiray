@@ -1,0 +1,8 @@
+# robots.txt for SeaMiray Secret Base
+# https://seamiray.github.io/SeaMiray/
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://seamiray.github.io/SeaMiray/sitemap.xml

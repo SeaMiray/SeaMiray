@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found | SeaMiray Secret Base</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ps2-black: #0a0808;
+            --ps2-dark-gray: #1a1715;
+            --ps2-gray: #3a3633;
+            --ps2-light-gray: #7a7571;
+            --accent-color: #c0a080;
+            --accent-hover: #e0c39e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'DotGothic16', monospace;
+            background: var(--ps2-black);
+            color: var(--ps2-light-gray);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .error-code {
+            font-size: clamp(4rem, 15vw, 8rem);
+            color: var(--accent-color);
+            text-shadow: 0 0 30px var(--accent-color);
+            margin-bottom: 20px;
+            animation: glitch 2s infinite;
+        }
+
+        @keyframes glitch {
+
+            0%,
+            90%,
+            100% {
+                transform: translate(0);
+            }
+
+            92% {
+                transform: translate(-2px, 1px);
+            }
+
+            94% {
+                transform: translate(2px, -1px);
+            }
+
+            96% {
+                transform: translate(-1px, 2px);
+            }
+
+            98% {
+                transform: translate(1px, -2px);
+            }
+        }
+
+        .error-message {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: #a8a3a0;
+        }
+
+        .home-link {
+            display: inline-block;
+            padding: 12px 30px;
+            background: var(--ps2-dark-gray);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .home-link:hover {
+            background: var(--accent-color);
+            color: var(--ps2-black);
+            box-shadow: 0 0 20px var(--accent-color);
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.1;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.4) 1px,
+                    rgba(0, 0, 0, 0.4) 2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="error-code">404</div>
+    <p class="error-message">ページが見つかりませんでした。</p>
+    <a href="./" class="home-link">トップページへ戻る</a>
+    <div class="scanlines"></div>
+</body>
+
+</html>

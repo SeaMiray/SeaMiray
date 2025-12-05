@@ -1,4 +1,4 @@
-/* style.css - PS2グラフィック風ポートフォリオサイト レスポンシブ対応版 */
+/* style.css - レトロ風ポートフォリオサイト レスポンシブ対応版 */
 :root {
   --ps2-black: #0a0808;
   --ps2-dark-gray: #1a1715;
@@ -473,12 +473,76 @@ button:focus-visible {
   left: 0;
   background: var(--nav-bg);
   border-right: 2px solid #000;
-  box-shadow: inset -12px 0 18px -12px rgba(0, 0, 0, 0.8), 6px 0 18px -6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset -12px 0 18px -12px rgba(0, 0, 0, 0.8),
+    6px 0 18px -6px rgba(0, 0, 0, 0.3),
+    inset 0 0 60px rgba(192, 160, 128, 0.03);
   display: flex;
   flex-direction: column;
   padding: var(--nav-padding) 0;
   z-index: 100;
   transition: width 0.4s, height 0.4s, padding 0.4s;
+  overflow: hidden;
+}
+
+/* サイドバー レトロ演出 */
+.side-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* サイドバー CRT曲率エフェクト */
+.side-nav::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center,
+      transparent 60%,
+      rgba(0, 0, 0, 0.15) 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* サイドバー ボーダーグロー */
+.side-nav {
+  border-right: 2px solid rgba(192, 160, 128, 0.3);
+  animation: sidebar-border-pulse 4s ease-in-out infinite;
+}
+
+@keyframes sidebar-border-pulse {
+
+  0%,
+  100% {
+    border-right-color: rgba(192, 160, 128, 0.2);
+    box-shadow:
+      inset -12px 0 18px -12px rgba(0, 0, 0, 0.8),
+      6px 0 18px -6px rgba(0, 0, 0, 0.3),
+      inset 0 0 60px rgba(192, 160, 128, 0.03),
+      2px 0 8px rgba(192, 160, 128, 0.1);
+  }
+
+  50% {
+    border-right-color: rgba(192, 160, 128, 0.4);
+    box-shadow:
+      inset -12px 0 18px -12px rgba(0, 0, 0, 0.8),
+      6px 0 18px -6px rgba(0, 0, 0, 0.3),
+      inset 0 0 60px rgba(192, 160, 128, 0.05),
+      2px 0 15px rgba(192, 160, 128, 0.2);
+  }
 }
 
 /* メインコンテンツエリア */
@@ -710,6 +774,7 @@ button:focus-visible {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  z-index: 3;
 }
 
 .nav-tab::before {
@@ -731,11 +796,26 @@ button:focus-visible {
 .nav-tab:hover,
 .nav-tab:focus-visible {
   color: var(--accent-color-hover);
+  text-shadow: 0 0 8px rgba(192, 160, 128, 0.5);
 }
 
 .nav-tab.active-tab {
   color: var(--accent-color);
   font-weight: 700;
+  text-shadow: 0 0 10px rgba(192, 160, 128, 0.4);
+  animation: nav-text-glow 3s ease-in-out infinite;
+}
+
+@keyframes nav-text-glow {
+
+  0%,
+  100% {
+    text-shadow: 0 0 8px rgba(192, 160, 128, 0.3);
+  }
+
+  50% {
+    text-shadow: 0 0 15px rgba(192, 160, 128, 0.6), 0 0 25px rgba(192, 160, 128, 0.2);
+  }
 }
 
 .nav-header {
@@ -1135,13 +1215,16 @@ button:focus-visible {
   position: fixed;
   inset: 0;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
+  /* 右側に配置 */
   align-items: center;
   z-index: 1003;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 20px;
+  padding-right: 40px;
+  /* 右側に余白 */
 }
 
 .game-description-overlay.visible {
@@ -1153,39 +1236,41 @@ button:focus-visible {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.6);
+  /* 透明度を下げて3Dビューを見やすく */
+  backdrop-filter: blur(1px);
 }
 
 .description-window {
   position: relative;
-  width: 100%;
-  max-width: 1200px;
-  height: 80vh;
-  max-height: 800px;
+  width: 45%;
+  /* 画面の半分程度 */
+  max-width: 600px;
+  height: 75vh;
+  max-height: 700px;
   background: var(--nav-bg);
   border: 3px solid var(--nav-border);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 0 40px rgba(197, 168, 128, 0.3);
   z-index: 1;
-  animation: window-open 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: window-slide-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
 }
 
-@keyframes window-open {
+@keyframes window-slide-in {
   0% {
-    transform: scale(0.8) translateY(50px);
+    transform: translateX(100px);
     opacity: 0;
   }
 
   70% {
-    transform: scale(1.02) translateY(-5px);
+    transform: translateX(-10px);
   }
 
   100% {
-    transform: scale(1) translateY(0);
+    transform: translateX(0);
     opacity: 1;
   }
 }
@@ -1673,7 +1758,12 @@ button:focus-visible {
     box-sizing: border-box;
   }
 
-  /* モーダル (縦並び) */
+  /* モーダル (縦並び) - モバイルでは中央配置 */
+  .game-description-overlay {
+    justify-content: center;
+    padding-right: 20px;
+  }
+
   .description-window {
     height: auto;
     max-height: 85vh;
@@ -1714,8 +1804,10 @@ button:focus-visible {
 /* スマートフォン縦向き特化 (さらに小さい画面) */
 @media (max-width: 480px) {
   :root {
-    --header-height: 0px; /* 上部ヘッダーなし */
-    --footer-height: 70px; /* 下部ナビの高さ */
+    --header-height: 0px;
+    /* 上部ヘッダーなし */
+    --footer-height: 70px;
+    /* 下部ナビの高さ */
   }
 
   /* テキスト復活 */
@@ -1736,7 +1828,8 @@ button:focus-visible {
     border-top: 2px solid #000;
     justify-content: space-evenly;
     padding: 0;
-    z-index: 500; /* モーダルより下、キャンバスより上 */
+    z-index: 500;
+    /* モーダルより下、キャンバスより上 */
     display: flex;
   }
 
@@ -1818,7 +1911,8 @@ button:focus-visible {
   /* その他調整 */
   .asset-grid-modern,
   .portfolio-grid {
-    padding: 15px 15px 30px; /* 下部に余白 */
+    padding: 15px 15px 30px;
+    /* 下部に余白 */
   }
 
   .asset-image-container,
@@ -1843,7 +1937,8 @@ button:focus-visible {
   }
 
   #layer-save-icon {
-    bottom: calc(20px + var(--footer-height)); /* アイコンが隠れないように */
+    bottom: calc(20px + var(--footer-height));
+    /* アイコンが隠れないように */
     right: 10px;
     transform: scale(0.7);
   }
@@ -1866,5 +1961,431 @@ button:focus-visible {
 @media (max-width: 768px) {
   .introduction-grid {
     padding: 0 20px 20px;
+  }
+}
+
+/* =============================================================================
+   追加演出効果 - Enhanced Visual Effects
+   ============================================================================= */
+
+/* 1. 背景パーティクル（浮遊ダスト） */
+.ambient-particle {
+  position: fixed;
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  animation: ambient-float 15s infinite linear;
+}
+
+@keyframes ambient-float {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(0) scale(0.5);
+  }
+
+  10% {
+    opacity: 0.6;
+  }
+
+  90% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) translateX(50px) scale(1);
+  }
+}
+
+/* 2. グリッチエフェクト */
+.glitch-target {
+  position: relative;
+}
+
+.glitch-target.glitching {
+  animation: text-glitch 0.3s ease-in-out;
+}
+
+@keyframes text-glitch {
+
+  0%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+
+  10% {
+    transform: translate(-2px, 1px);
+    filter: hue-rotate(90deg);
+  }
+
+  20% {
+    transform: translate(2px, -1px);
+    text-shadow: -2px 0 #ff0000, 2px 0 #00ffff;
+  }
+
+  30% {
+    transform: translate(-1px, 2px);
+    filter: hue-rotate(-90deg);
+  }
+
+  40% {
+    transform: translate(1px, -2px);
+    text-shadow: 2px 0 #ff0000, -2px 0 #00ffff;
+  }
+
+  50% {
+    transform: translate(-2px, -1px);
+    clip-path: inset(30% 0 40% 0);
+  }
+
+  60% {
+    transform: translate(2px, 1px);
+    clip-path: inset(50% 0 20% 0);
+  }
+
+  70% {
+    transform: translate(0);
+    clip-path: none;
+  }
+}
+
+/* 画像グリッチ */
+.glitch-image.glitching {
+  animation: image-glitch 0.4s ease-in-out;
+}
+
+@keyframes image-glitch {
+
+  0%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+
+  20% {
+    transform: translate(-3px, 2px);
+    filter: saturate(2) hue-rotate(10deg);
+  }
+
+  40% {
+    transform: translate(3px, -2px);
+    filter: saturate(0.5) contrast(1.5);
+  }
+
+  60% {
+    transform: translate(-2px, -1px);
+    filter: brightness(1.3);
+  }
+
+  80% {
+    transform: translate(2px, 1px);
+    filter: saturate(1.5);
+  }
+}
+
+/* 3. タイピングアニメーション */
+.typing-text {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--accent-color);
+  animation: typing-cursor 0.7s step-end infinite;
+}
+
+@keyframes typing-cursor {
+
+  0%,
+  50% {
+    border-color: var(--accent-color);
+  }
+
+  51%,
+  100% {
+    border-color: transparent;
+  }
+}
+
+/* 4. ネオンパルス効果 */
+.neon-pulse {
+  animation: neon-glow 3s ease-in-out infinite;
+}
+
+@keyframes neon-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px var(--accent-color),
+      0 0 10px var(--accent-color),
+      inset 0 0 5px rgba(192, 160, 128, 0.1);
+    border-color: var(--nav-border);
+  }
+
+  50% {
+    box-shadow: 0 0 10px var(--accent-color),
+      0 0 20px var(--accent-color),
+      0 0 30px var(--accent-color),
+      inset 0 0 10px rgba(192, 160, 128, 0.2);
+    border-color: var(--accent-color);
+  }
+}
+
+/* テキストネオンパルス */
+.neon-text-pulse {
+  animation: neon-text-glow 4s ease-in-out infinite;
+}
+
+@keyframes neon-text-glow {
+
+  0%,
+  100% {
+    text-shadow: 0 0 5px var(--accent-color);
+  }
+
+  50% {
+    text-shadow: 0 0 10px var(--accent-color),
+      0 0 20px var(--accent-color),
+      0 0 30px var(--accent-color);
+  }
+}
+
+/* 5. ホバー時Waveアニメーション */
+.hover-wave {
+  transition: transform 0.3s ease;
+}
+
+.hover-wave:hover {
+  animation: card-wave 0.6s ease-in-out;
+}
+
+@keyframes card-wave {
+
+  0%,
+  100% {
+    transform: perspective(1000px) rotateX(0) rotateY(0);
+  }
+
+  25% {
+    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg);
+  }
+
+  50% {
+    transform: perspective(1000px) rotateX(-1deg) rotateY(2deg);
+  }
+
+  75% {
+    transform: perspective(1000px) rotateX(1deg) rotateY(-1deg);
+  }
+}
+
+/* 6. セクション切替グリッチ */
+.section-glitch-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3000;
+  opacity: 0;
+  background: linear-gradient(0deg,
+      transparent 0%,
+      rgba(192, 160, 128, 0.1) 50%,
+      transparent 100%);
+}
+
+.section-glitch-overlay.active {
+  animation: section-glitch 0.4s ease-out forwards;
+}
+
+@keyframes section-glitch {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  10% {
+    opacity: 1;
+    transform: translateX(-5px);
+  }
+
+  20% {
+    transform: translateX(5px);
+    background: linear-gradient(0deg,
+        transparent 0%,
+        rgba(255, 0, 0, 0.1) 25%,
+        rgba(0, 255, 255, 0.1) 75%,
+        transparent 100%);
+  }
+
+  30% {
+    transform: translateX(-3px);
+  }
+
+  40% {
+    transform: translateX(3px);
+  }
+
+  60% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+}
+
+/* 7. マウストレイル */
+.mouse-trail-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.8;
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease-out, transform 0.1s ease-out;
+}
+
+/* 8. ランダムVHS歪み強化 */
+.vhs-glitch-intense {
+  animation: vhs-intense 0.15s linear;
+}
+
+@keyframes vhs-intense {
+  0% {
+    transform: translate(0);
+    filter: none;
+  }
+
+  10% {
+    transform: translate(-2px, 0) skewX(1deg);
+    filter: saturate(2);
+  }
+
+  20% {
+    transform: translate(2px, 1px) skewX(-1deg);
+    filter: hue-rotate(5deg);
+  }
+
+  30% {
+    transform: translate(-1px, -1px);
+    filter: brightness(1.2);
+  }
+
+  40% {
+    transform: translate(1px, 0) skewX(0.5deg);
+    filter: contrast(1.2);
+  }
+
+  50% {
+    transform: translate(0, 1px);
+    filter: saturate(1.5);
+  }
+
+  60% {
+    transform: translate(-1px, 0);
+  }
+
+  70% {
+    transform: translate(1px, -1px);
+  }
+
+  80% {
+    transform: translate(0);
+  }
+
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+}
+
+/* VHSノイズラインエフェクト */
+.vhs-line-glitch::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 9998;
+  pointer-events: none;
+  animation: vhs-line-scan 3s linear infinite;
+}
+
+@keyframes vhs-line-scan {
+  0% {
+    top: -10px;
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 0.8;
+  }
+
+  95% {
+    opacity: 0.8;
+  }
+
+  100% {
+    top: 100vh;
+    opacity: 0;
+  }
+}
+
+/* ボーダーパルスエフェクト（ナビゲーション用） */
+.nav-tab.active-tab .power-button-simple {
+  animation: power-pulse 2s ease-in-out infinite, neon-glow 3s ease-in-out infinite;
+}
+
+/* アセットカードホバー強化 */
+.asset-card-modern {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.asset-card-modern:hover {
+  animation: card-wave 0.6s ease-in-out;
+  box-shadow: 0 10px 40px rgba(192, 160, 128, 0.2),
+    0 0 20px rgba(192, 160, 128, 0.1);
+}
+
+/* ポートフォリオカードホバー強化 */
+.portfolio-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.portfolio-card:hover {
+  animation: card-wave 0.6s ease-in-out;
+  box-shadow: 0 10px 40px rgba(192, 160, 128, 0.2);
+}
+
+/* ローディングテキストにタイピングカーソル */
+.loading-text {
+  border-right: 3px solid var(--accent-color);
+  animation: loading-pulse 1.2s infinite ease-in-out, typing-cursor 0.7s step-end infinite;
+}
+
+/* スキャンライン強化 - 時々強いライン */
+.scanlines.intense-scan::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  animation: intense-scanline 4s linear infinite;
+}
+
+@keyframes intense-scanline {
+  0% {
+    top: -10px;
+  }
+
+  100% {
+    top: 100vh;
   }
 }
